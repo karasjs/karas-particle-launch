@@ -42,10 +42,17 @@ karas.render(
                     num={100} // 粒子数量
                     interval={100} // 每颗发射间隔
                     delay={500} // 播放延迟
+                    autoPlay={false} // 自动播放，非false为自动
     />
   </canvas>
 );
 ```
+
+### method
+
+* pause()
+* resume()
+* play()
 
 # License
 [MIT License]

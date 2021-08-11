@@ -101,23 +101,28 @@ function _createSuper(Derived) {
   };
 }
 
-var version = "0.1.0";
+var version = "0.2.0";
 
 var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
   _inherits(ParticleLaunch, _karas$Component);
 
   var _super = _createSuper(ParticleLaunch);
 
-  function ParticleLaunch() {
+  function ParticleLaunch(props) {
+    var _this;
+
     _classCallCheck(this, ParticleLaunch);
 
-    return _super.apply(this, arguments);
+    _this = _super.call(this, props);
+    _this.count = 0;
+    _this.time = 0;
+    return _this;
   }
 
   _createClass(ParticleLaunch, [{
     key: "componentDidMount",
     value: function componentDidMount() {
-      var _this = this;
+      var _this2 = this;
 
       var props = this.props;
       var list = props.list,
@@ -126,28 +131,27 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
           _props$interval = props.interval,
           interval = _props$interval === void 0 ? 300 : _props$interval,
           _props$delay = props.delay,
-          delay = _props$delay === void 0 ? 0 : _props$delay;
+          delay = _props$delay === void 0 ? 0 : _props$delay,
+          autoPlay = props.autoPlay;
 
       if (num === 'infinity' || num === 'Infinity') {
         num = Infinity;
       }
 
       var dataList = [];
-      var time = 0,
-          i = 0,
+      var i = 0,
           length = list.length,
-          count = 0,
           first = true;
       var fake = this.ref.fake;
 
-      var cb = function cb(diff) {
+      var cb = this.cb = function (diff) {
         if (delay > 0) {
           delay -= diff;
         }
 
         if (delay <= 0) {
           diff += delay;
-          time += diff;
+          _this2.time += diff;
           delay = 0; // 已有的每个粒子时间增加计算位置，结束的则消失
 
           for (var j = dataList.length - 1; j >= 0; j--) {
@@ -163,10 +167,10 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
                   height = item.height,
                   dx = item.dx,
                   dy = item.dy,
-                  _time = item.time,
+                  time = item.time,
                   duration = item.duration,
                   easing = item.easing;
-              var percent = _time / duration;
+              var percent = time / duration;
 
               if (easing) {
                 percent = easing(percent);
@@ -177,34 +181,38 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
             }
           }
 
-          if (count++ >= num) {
+          if (_this2.count++ >= num) {
             return;
           } // 每隔一段时间增加一个粒子，或者第一个不需要等待
 
 
-          if (time >= interval || first) {
+          if (_this2.time >= interval || first) {
             if (first) {
               first = false;
             } else {
-              time -= interval;
+              _this2.time -= interval;
             }
 
             i++;
             i %= length;
-            dataList.push(_this.genItem(list[i]));
+            dataList.push(_this2.genItem(list[i]));
           }
         }
       };
 
-      fake.frameAnimate(cb);
-      var a = fake.animate([{
+      if (autoPlay !== false) {
+        fake.frameAnimate(cb);
+      }
+
+      var a = this.animation = fake.animate([{
         opacity: 1
       }, {
         opacity: 0
       }], {
         duration: 1000,
         delay: delay,
-        iterations: Infinity
+        iterations: Infinity,
+        autoPlay: autoPlay
       });
 
       fake.render = function (renderMode, lv, ctx) {
@@ -365,6 +373,36 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
       }
 
       return o;
+    }
+  }, {
+    key: "pause",
+    value: function pause() {
+      this.ref.fake.removeFrameAnimate(this.cb);
+
+      if (this.animation) {
+        this.animation.pause();
+      }
+    }
+  }, {
+    key: "resume",
+    value: function resume() {
+      this.ref.fake.frameAnimate(this.cb);
+
+      if (this.animation) {
+        this.animation.resume();
+      }
+    }
+  }, {
+    key: "play",
+    value: function play() {
+      this.count = 0;
+      this.time = 0;
+      this.ref.fake.removeFrameAnimate(this.cb);
+      this.ref.fake.frameAnimate(this.cb);
+
+      if (this.animation) {
+        this.animation.play();
+      }
     }
   }, {
     key: "render",

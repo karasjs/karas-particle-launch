@@ -2,22 +2,28 @@ import karas from 'karas';
 import { version } from '../package.json';
 
 class ParticleLaunch extends karas.Component {
+  constructor(props) {
+    super(props);
+    this.count = 0;
+    this.time = 0;
+  }
+
   componentDidMount() {
     let { props } = this;
-    let { list, num = 0, interval = 300, delay = 0 } = props;
+    let { list, num = 0, interval = 300, delay = 0, autoPlay } = props;
     if(num === 'infinity' || num === 'Infinity') {
       num = Infinity;
     }
     let dataList = [];
-    let time = 0, i = 0, length = list.length, count = 0, first = true;
+    let i = 0, length = list.length, first = true;
     let fake = this.ref.fake;
-    let cb = diff => {
+    let cb = this.cb = diff => {
       if(delay > 0) {
         delay -= diff;
       }
       if(delay <= 0) {
         diff += delay;
-        time += diff;
+        this.time += diff;
         delay = 0;
         // 已有的每个粒子时间增加计算位置，结束的则消失
         for(let j = dataList.length - 1; j >= 0; j--) {
@@ -36,16 +42,16 @@ class ParticleLaunch extends karas.Component {
             item.nowY = y + dy * percent - height * 0.5;
           }
         }
-        if(count++ >= num) {
+        if(this.count++ >= num) {
           return;
         }
         // 每隔一段时间增加一个粒子，或者第一个不需要等待
-        if(time >= interval || first) {
+        if(this.time >= interval || first) {
           if(first) {
             first = false;
           }
           else {
-            time -= interval;
+            this.time -= interval;
           }
           i++;
           i %= length;
@@ -53,8 +59,10 @@ class ParticleLaunch extends karas.Component {
         }
       }
     };
-    fake.frameAnimate(cb);
-    let a = fake.animate([
+    if(autoPlay !== false) {
+      fake.frameAnimate(cb);
+    }
+    let a = this.animation = fake.animate([
       {
         opacity: 1,
       },
@@ -65,6 +73,7 @@ class ParticleLaunch extends karas.Component {
       duration: 1000,
       delay,
       iterations: Infinity,
+      autoPlay,
     });
     fake.render = (renderMode, lv, ctx) => {
       let { sx, sy } = fake;
@@ -202,6 +211,30 @@ class ParticleLaunch extends karas.Component {
       });
     }
     return o;
+  }
+
+  pause() {
+    this.ref.fake.removeFrameAnimate(this.cb);
+    if(this.animation) {
+      this.animation.pause();
+    }
+  }
+
+  resume() {
+    this.ref.fake.frameAnimate(this.cb);
+    if(this.animation) {
+      this.animation.resume();
+    }
+  }
+
+  play() {
+    this.count = 0;
+    this.time = 0;
+    this.ref.fake.removeFrameAnimate(this.cb);
+    this.ref.fake.frameAnimate(this.cb);
+    if(this.animation) {
+      this.animation.play();
+    }
   }
 
   render() {
