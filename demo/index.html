@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8"/>
+  <!--  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=0"/>-->
+  <meta name="viewport"
+        content="width=device-width,initial-scale=0.5,maximum-scale=0.5,minimum-scale=0.5,user-scalable=0"/>
+  <title>index</title>
+  <link href="style.css" media="all" rel="stylesheet"/>
+</head>
+<body>
+<div id="test"></div>
+<pre><code class="brush:csx"></code></pre>
+<script type="text/jsx">
+  karas.render(
+    <canvas width="360" height="360">
+      <ParticleBoom
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          width: 300,
+          height: 300,
+          translateX: '-50%',
+          translateY: '-50%',
+        }}
+        list={[{
+          url: 'https://gw.alipayobjects.com/mdn/rms_5922c1/afts/img/A*lW6mQ46eA0MAAAAAAAAAAAAAARQnAQ',
+          x: 0.5,
+          y: 0.5,
+          distance: [0.2, 1.2],
+          deg: [0, 360],
+          width: 5,
+          height: 5,
+          easing: 'ease-out',
+          blink: {
+            from: [0.6, 0.8],
+            to: [0.2, 0.4],
+            duration: [200, 300],
+          },
+        }]}
+        num={100}
+        delay={500}
+        duration={2000}
+      />
+    </canvas>,
+    '#test'
+  );
+</script>
+<script src="homunculus.js"></script>
+<script src="yurine.js"></script>
+<script src="sea.js"></script>
+<script src="karas.js"></script>
+<script src="../index.js"></script>
+<script>
+  seajs.config({
+    alias: {},
+  });
+  define('fs', {});
+  seajs.use(['jssc'], function(jssc) {
+    var code = document.querySelector('pre code');
+    var jsx = document.querySelector('script[type="text/jsx"]');
+    var source = jsx.textContent || jsx.text;
+    source = source.trim().replace(/\n[ ]{2}/g, '\n');
+    var text = document.createTextNode(source);
+    code.appendChild(text);
+    jssc.exec();
+    var head = document.head || document.getElementsByTagName('head')[0];
+    var jsx = document.querySelectorAll('script');
+    for(var i = 0, len = jsx.length; i < len; i++) {
+      var node = jsx[i];
+      if(node.getAttribute('type') === 'text/jsx' && !node.getAttribute('yurine')) {
+        node.setAttribute('yurine', 1);
+        var code = node.textContent || node.text;
+        if(!code) {
+          continue;
+        }
+        code = yurine.parse(code);
+        var script = document.createElement('script');
+        script.async = true;
+        script.text = code;
+        head.appendChild(script);
+      }
+    }
+  });
+</script>
+</body>
+</html>
