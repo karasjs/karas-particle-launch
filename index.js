@@ -1,7 +1,7 @@
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('karas')) :
   typeof define === 'function' && define.amd ? define(['karas'], factory) :
-  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ParticleBoom = factory(global.karas));
+  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ParticleLaunch = factory(global.karas));
 }(this, (function (karas) { 'use strict';
 
   function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
@@ -128,27 +128,34 @@
         var _this = this;
 
         var props = this.props;
-        var list = props.list;
-            props.num;
-            var _props$interval = props.interval,
+        var list = props.list,
+            _props$num = props.num,
+            num = _props$num === void 0 ? 0 : _props$num,
+            _props$interval = props.interval,
             interval = _props$interval === void 0 ? 300 : _props$interval,
             _props$delay = props.delay,
             delay = _props$delay === void 0 ? 0 : _props$delay;
 
+        if (num === 'infinity' || num === 'Infinity') {
+          num = Infinity;
+        }
+
         var dataList = [];
-        var count = 0,
+        var time = 0,
             i = 0,
             length = list.length,
+            count = 0,
             first = true;
         var fake = this.ref.fake;
-        fake.frameAnimate(function (diff) {
+
+        var cb = function cb(diff) {
           if (delay > 0) {
             delay -= diff;
           }
 
           if (delay <= 0) {
             diff += delay;
-            count += diff;
+            time += diff;
             delay = 0; // 已有的每个粒子时间增加计算位置，结束的则消失
 
             for (var j = dataList.length - 1; j >= 0; j--) {
@@ -164,10 +171,10 @@
                     height = item.height,
                     dx = item.dx,
                     dy = item.dy,
-                    time = item.time,
+                    _time = item.time,
                     duration = item.duration,
                     easing = item.easing;
-                var percent = time / duration;
+                var percent = _time / duration;
 
                 if (easing) {
                   percent = easing(percent);
@@ -176,14 +183,18 @@
                 item.nowX = x + dx * percent - width * 0.5;
                 item.nowY = y + dy * percent - height * 0.5;
               }
+            }
+
+            if (count++ >= num) {
+              return;
             } // 每隔一段时间增加一个粒子，或者第一个不需要等待
 
 
-            if (count >= interval || first) {
+            if (time >= interval || first) {
               if (first) {
                 first = false;
               } else {
-                count -= interval;
+                time -= interval;
               }
 
               i++;
@@ -191,7 +202,9 @@
               dataList.push(_this.genItem(list[i]));
             }
           }
-        });
+        };
+
+        fake.frameAnimate(cb);
         var a = fake.animate([{
           opacity: 1
         }, {

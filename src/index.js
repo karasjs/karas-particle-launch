@@ -9,15 +9,15 @@ class ParticleLaunch extends karas.Component {
       num = Infinity;
     }
     let dataList = [];
-    let count = 0, i = 0, length = list.length, first = true;
+    let time = 0, i = 0, length = list.length, count = 0, first = true;
     let fake = this.ref.fake;
-    fake.frameAnimate(diff => {
+    let cb = diff => {
       if(delay > 0) {
         delay -= diff;
       }
       if(delay <= 0) {
         diff += delay;
-        count += diff;
+        time += diff;
         delay = 0;
         // 已有的每个粒子时间增加计算位置，结束的则消失
         for(let j = dataList.length - 1; j >= 0; j--) {
@@ -36,20 +36,24 @@ class ParticleLaunch extends karas.Component {
             item.nowY = y + dy * percent - height * 0.5;
           }
         }
+        if(count++ >= num) {
+          return;
+        }
         // 每隔一段时间增加一个粒子，或者第一个不需要等待
-        if(count >= interval || first) {
+        if(time >= interval || first) {
           if(first) {
             first = false;
           }
           else {
-            count -= interval;
+            time -= interval;
           }
           i++;
           i %= length;
           dataList.push(this.genItem(list[i]));
         }
       }
-    });
+    };
+    fake.frameAnimate(cb);
     let a = fake.animate([
       {
         opacity: 1,

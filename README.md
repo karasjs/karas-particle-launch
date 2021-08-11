@@ -37,10 +37,11 @@ karas.render(
                         to: [0.2, 0.4],
                         duration: [200, 300],
                       },
+                      duration: 2000, // 时长
                     }]} // 粒子随机选择位图
                     num={100} // 粒子数量
+                    interval={100} // 每颗发射间隔
                     delay={500} // 播放延迟
-                    duration={2000} // 时长
     />
   </canvas>
 );

@@ -4,7 +4,7 @@ import json from '@rollup/plugin-json';
 export default [{
   input: 'src/index.js',
   output: {
-    name: 'ParticleBoom',
+    name: 'ParticleLaunch',
     file: 'index.es.js',
     format: 'es',
     sourcemap: true,
@@ -19,7 +19,7 @@ export default [{
 }, {
   input: 'src/index.js',
   output: {
-    name: 'ParticleBoom',
+    name: 'ParticleLaunch',
     file: 'index.js',
     format: 'umd',
     sourcemap: true,

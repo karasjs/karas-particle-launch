@@ -13,7 +13,7 @@
 <script type="text/jsx">
   karas.render(
     <canvas width="360" height="360">
-      <ParticleBoom
+      <ParticleLaunch
         style={{
           position: 'absolute',
           left: '50%',
@@ -37,10 +37,11 @@
             to: [0.2, 0.4],
             duration: [200, 300],
           },
+          duration: 2000,
         }]}
+        interval={100}
         num={100}
         delay={500}
-        duration={2000}
       />
     </canvas>,
     '#test'
