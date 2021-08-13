@@ -40,7 +40,9 @@ karas.render(
                       duration: 2000, // 时长
                     }]} // 粒子随机选择位图
                     num={100} // 粒子数量
-                    interval={100} // 每颗发射间隔
+                    initNum={30} // 初始粒子数量，默认0
+                    interval={100} // 每轮发射间隔
+                    intervalNum={1} // 每轮发射数量
                     delay={500} // 播放延迟
                     autoPlay={false} // 自动播放，非false为自动
     />

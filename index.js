@@ -109,7 +109,7 @@
     };
   }
 
-  var version = "0.2.0";
+  var version = "0.2.1";
 
   var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
     _inherits(ParticleLaunch, _karas$Component);
@@ -136,8 +136,12 @@
         var list = props.list,
             _props$num = props.num,
             num = _props$num === void 0 ? 0 : _props$num,
+            _props$initNum = props.initNum,
+            initNum = _props$initNum === void 0 ? 0 : _props$initNum,
             _props$interval = props.interval,
             interval = _props$interval === void 0 ? 300 : _props$interval,
+            _props$intervalNum = props.intervalNum,
+            intervalNum = _props$intervalNum === void 0 ? 1 : _props$intervalNum,
             _props$delay = props.delay,
             delay = _props$delay === void 0 ? 0 : _props$delay,
             autoPlay = props.autoPlay;
@@ -160,7 +164,14 @@
           if (delay <= 0) {
             diff += delay;
             _this2.time += diff;
-            delay = 0; // 已有的每个粒子时间增加计算位置，结束的则消失
+            delay = 0; // 如果有初始例子
+
+            while (initNum-- > 0) {
+              i++;
+              i %= length;
+              dataList.push(_this2.genItem(list[i]));
+            } // 已有的每个粒子时间增加计算位置，结束的则消失
+
 
             for (var j = dataList.length - 1; j >= 0; j--) {
               var item = dataList[j];
@@ -201,9 +212,11 @@
                 _this2.time -= interval;
               }
 
-              i++;
-              i %= length;
-              dataList.push(_this2.genItem(list[i]));
+              for (var _j = 0; _j < intervalNum; _j++) {
+                i++;
+                i %= length;
+                dataList.push(_this2.genItem(list[i]));
+              }
             }
           }
         };
@@ -263,10 +276,20 @@
         var width = this.width,
             height = this.height;
         var o = {
-          x: item.x * width,
-          y: item.y * height,
           time: 0
         };
+
+        if (Array.isArray(item.x)) {
+          o.x = item.x[0] + Math.random() * (item.x[1] - item.x[0]) * width;
+        } else {
+          o.x = item.x * width;
+        }
+
+        if (Array.isArray(item.y)) {
+          o.y = item.y[0] + Math.random() * (item.y[1] - item.y[0]) * height;
+        } else {
+          o.y = item.y * height;
+        }
 
         if (Array.isArray(item.duration)) {
           o.duration = item.duration[0] + Math.random() * (item.duration[1] - item.duration[0]);

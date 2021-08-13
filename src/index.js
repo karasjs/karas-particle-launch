@@ -10,7 +10,7 @@ class ParticleLaunch extends karas.Component {
 
   componentDidMount() {
     let { props } = this;
-    let { list, num = 0, interval = 300, delay = 0, autoPlay } = props;
+    let { list, num = 0, initNum = 0, interval = 300, intervalNum = 1, delay = 0, autoPlay } = props;
     if(num === 'infinity' || num === 'Infinity') {
       num = Infinity;
     }
@@ -25,6 +25,12 @@ class ParticleLaunch extends karas.Component {
         diff += delay;
         this.time += diff;
         delay = 0;
+        // 如果有初始例子
+        while(initNum-- > 0) {
+          i++;
+          i %= length;
+          dataList.push(this.genItem(list[i]));
+        }
         // 已有的每个粒子时间增加计算位置，结束的则消失
         for(let j = dataList.length - 1; j >= 0; j--) {
           let item = dataList[j];
@@ -53,9 +59,11 @@ class ParticleLaunch extends karas.Component {
           else {
             this.time -= interval;
           }
-          i++;
-          i %= length;
-          dataList.push(this.genItem(list[i]));
+          for(let j = 0; j < intervalNum; j++) {
+            i++;
+            i %= length;
+            dataList.push(this.genItem(list[i]));
+          }
         }
       }
     };
@@ -108,10 +116,20 @@ class ParticleLaunch extends karas.Component {
   genItem(item) {
     let { width, height } = this;
     let o = {
-      x: item.x * width,
-      y: item.y * height,
       time: 0,
     };
+    if(Array.isArray(item.x)) {
+      o.x = item.x[0] + Math.random() * (item.x[1] - item.x[0]) * width;
+    }
+    else {
+      o.x = item.x * width;
+    }
+    if(Array.isArray(item.y)) {
+      o.y = item.y[0] + Math.random() * (item.y[1] - item.y[0]) * height;
+    }
+    else {
+      o.y = item.y * height;
+    }
     if(Array.isArray(item.duration)) {
       o.duration = (item.duration[0] + Math.random() * (item.duration[1] - item.duration[0]));
     }
