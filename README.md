@@ -44,6 +44,7 @@ karas.render(
                     interval={100} // 每轮发射间隔
                     intervalNum={1} // 每轮发射数量
                     delay={500} // 播放延迟
+                    playbackRate={1} // 播放速率
                     autoPlay={false} // 自动播放，非false为自动
     />
   </canvas>
@@ -51,10 +52,12 @@ karas.render(
 ```
 
 ### method
-
 * pause()
 * resume()
 * play()
+
+### get/set
+* playbackRate 播放速率
 
 # License
 [MIT License]

@@ -6,6 +6,7 @@ class ParticleLaunch extends karas.Component {
     super(props);
     this.count = 0;
     this.time = 0;
+    this.playbackRate = props.playbackRate || 1;
   }
 
   componentDidMount() {
@@ -18,6 +19,7 @@ class ParticleLaunch extends karas.Component {
     let i = 0, length = list.length, first = true;
     let fake = this.ref.fake;
     let cb = this.cb = diff => {
+      diff *= this.playbackRate;
       if(delay > 0) {
         delay -= diff;
       }

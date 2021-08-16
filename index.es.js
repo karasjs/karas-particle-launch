@@ -101,7 +101,7 @@ function _createSuper(Derived) {
   };
 }
 
-var version = "0.2.1";
+var version = "0.2.2";
 
 var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
   _inherits(ParticleLaunch, _karas$Component);
@@ -116,6 +116,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
     _this = _super.call(this, props);
     _this.count = 0;
     _this.time = 0;
+    _this.playbackRate = props.playbackRate || 1;
     return _this;
   }
 
@@ -149,6 +150,8 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
       var fake = this.ref.fake;
 
       var cb = this.cb = function (diff) {
+        diff *= _this2.playbackRate;
+
         if (delay > 0) {
           delay -= diff;
         }
