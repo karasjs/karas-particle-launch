@@ -9,6 +9,10 @@ class ParticleLaunch extends karas.Component {
     this.playbackRate = props.playbackRate || 1;
   }
 
+  shouldComponentUpdate() {
+    return false;
+  }
+
   componentDidMount() {
     let { props } = this;
     let { list, num = 0, initNum = 0, interval = 300, intervalNum = 1, delay = 0, autoPlay } = props;

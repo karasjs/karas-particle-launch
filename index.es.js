@@ -101,7 +101,7 @@ function _createSuper(Derived) {
   };
 }
 
-var version = "0.2.2";
+var version = "0.2.3";
 
 var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
   _inherits(ParticleLaunch, _karas$Component);
@@ -121,6 +121,11 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
   }
 
   _createClass(ParticleLaunch, [{
+    key: "shouldComponentUpdate",
+    value: function shouldComponentUpdate() {
+      return false;
+    }
+  }, {
     key: "componentDidMount",
     value: function componentDidMount() {
       var _this2 = this;
