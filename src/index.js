@@ -15,12 +15,13 @@ class ParticleLaunch extends karas.Component {
 
   componentDidMount() {
     let { props } = this;
-    let { list, num = 0, initNum = 0, interval = 300, intervalNum = 1, delay = 0, autoPlay } = props;
+    let { list = [], num = 0, initNum = 0, interval = 300, intervalNum = 1, delay = 0, autoPlay } = props;
     if(num === 'infinity' || num === 'Infinity') {
       num = Infinity;
     }
     let dataList = [];
     let i = 0, length = list.length, first = true;
+    let playCount = 0, count = 0;
     let fake = this.ref.fake;
     let cb = this.cb = diff => {
       diff *= this.playbackRate;
@@ -35,6 +36,7 @@ class ParticleLaunch extends karas.Component {
         while(initNum-- > 0) {
           i++;
           i %= length;
+          count++;
           dataList.push(this.genItem(list[i]));
         }
         // 已有的每个粒子时间增加计算位置，结束的则消失
@@ -54,21 +56,23 @@ class ParticleLaunch extends karas.Component {
             item.nowY = y + dy * percent - height * 0.5;
           }
         }
-        if(this.count++ >= num) {
+        if(count >= num) {
           return;
         }
-        // 每隔一段时间增加一个粒子，或者第一个不需要等待
-        if(this.time >= interval || first) {
-          if(first) {
-            first = false;
-          }
-          else {
-            this.time -= interval;
-          }
-          for(let j = 0; j < intervalNum; j++) {
-            i++;
-            i %= length;
-            dataList.push(this.genItem(list[i]));
+        if(this.animation.playCount > playCount) {
+          let n = this.animation.playCount - playCount;
+          playCount = this.animation.playCount;
+          outer:
+          while(n--) {
+            for(let j = 0; j < intervalNum; j++) {
+              i++;
+              i %= length;
+              count++;
+              dataList.push(this.genItem(list[i]))
+              if(count >= num) {
+                break outer;
+              }
+            }
           }
         }
       }
@@ -89,7 +93,7 @@ class ParticleLaunch extends karas.Component {
       iterations: Infinity,
       autoPlay,
     });
-    fake.render = (renderMode, lv, ctx) => {
+    fake.render = (renderMode, lv, ctx, cache, dx = 0, dy = 0) => {
       let { sx, sy } = fake;
       let alpha = ctx.globalAlpha;
       let time = a.currentTime - delay;
@@ -105,14 +109,14 @@ class ParticleLaunch extends karas.Component {
             let diff = time % blink.duration;
             // 偶数from2to，奇数to2from
             if(num % 2 === 0) {
-              opacity *= blink.from - (blink.from - blink.to) * diff / blink.duration;
+              opacity *= blink.from + (blink.to - blink.from) * diff / blink.duration;
             }
             else {
-              opacity *= blink.to + (blink.from - blink.to) * diff / blink.duration;
+              opacity *= blink.to - (blink.to - blink.from) * diff / blink.duration;
             }
           }
           ctx.globalAlpha = opacity;
-          ctx.drawImage(item.source, item.nowX + sx, item.nowY + sy, item.width, item.height);
+          ctx.drawImage(item.source, item.nowX + sx + dx, item.nowY + sy + dy, item.width, item.height);
         }
       });
       ctx.globalAlpha = alpha;
@@ -125,13 +129,13 @@ class ParticleLaunch extends karas.Component {
       time: 0,
     };
     if(Array.isArray(item.x)) {
-      o.x = item.x[0] + Math.random() * (item.x[1] - item.x[0]) * width;
+      o.x = (item.x[0] + Math.random() * (item.x[1] - item.x[0])) * width;
     }
     else {
       o.x = item.x * width;
     }
     if(Array.isArray(item.y)) {
-      o.y = item.y[0] + Math.random() * (item.y[1] - item.y[0]) * height;
+      o.y = (item.y[0] + Math.random() * (item.y[1] - item.y[0])) * height;
     }
     else {
       o.y = item.y * height;
@@ -163,14 +167,14 @@ class ParticleLaunch extends karas.Component {
     if(Array.isArray(item.deg)) {
       deg = (item.deg[0] + Math.random() * (item.deg[1] - item.deg[0]));
     }
-    else {
+    else if(deg) {
       deg = item.deg;
     }
     let distance = 0;
     if(Array.isArray(item.distance)) {
       distance = (item.distance[0] + Math.random() * (item.distance[1] - item.distance[0])) * width;
     }
-    else {
+    else if(distance) {
       distance = item.distance * width;
     }
     if(deg >= 270) {
@@ -199,7 +203,7 @@ class ParticleLaunch extends karas.Component {
     o.dx = o.tx - o.x;
     o.dy = o.ty - o.y;
     if(item.blink) {
-      let { from, to, duration } = item.blink;
+      let { from = 0, to = 1, duration } = item.blink;
       if(Array.isArray(duration)) {
         duration = duration[0] + Math.random() * (duration[1] - duration[0]);
       }
@@ -207,6 +211,13 @@ class ParticleLaunch extends karas.Component {
         o.blink = {
           from: from[0] + (Math.random() * from[1] - from[0]),
           to: to[0] + (Math.random() * to[1] - to[0]),
+          duration,
+        };
+      }
+      else {
+        o.blink = {
+          from: from,
+          to: to,
           duration,
         };
       }
@@ -216,13 +227,17 @@ class ParticleLaunch extends karas.Component {
       if(Array.isArray(duration)) {
         duration = duration[0] + Math.random() * (duration[1] - duration[0]);
       }
-      if(Array.isArray(from) && Array.isArray(to)) {
-        o.blink = {
-          from: from[0] + (Math.random() * from[1] - from[0]),
-          to: to[0] + (Math.random() * to[1] - to[0]),
-          duration,
-        };
+      if(Array.isArray(from)) {
+        from = from[0] + Math.random() * (from[1] - from[0]);
       }
+      if(Array.isArray(to)) {
+        to = to[0] + Math.random() * (to[1] - to[0]);
+      }
+      o.blink = {
+        from,
+        to,
+        duration,
+      };
     }
     if(item.easing) {
       item.easing = karas.animate.easing.getEasing(item.easing);

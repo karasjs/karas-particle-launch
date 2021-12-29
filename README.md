@@ -4,7 +4,7 @@ ParticularLaunch component for karas.
 ---
 karas粒子发射组件。
 
-[![NPM version](https://img.shields.io/npm/v/karas-particular-launch.svg)](https://npmjs.org/package/karas-particular-launch)
+[![NPM version](https://img.shields.io/npm/v/karas-particle-launch.svg)](https://npmjs.org/package/karas-particle-launch)
 
 ## Install
 ```
@@ -39,7 +39,7 @@ karas.render(
                       },
                       duration: 2000, // 时长
                     }]} // 粒子随机选择位图
-                    num={100} // 粒子数量
+                    num={100} // 粒子总数限制
                     initNum={30} // 初始粒子数量，默认0
                     interval={100} // 每轮发射间隔
                     intervalNum={1} // 每轮发射数量

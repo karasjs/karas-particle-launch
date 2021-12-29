@@ -101,7 +101,7 @@ function _createSuper(Derived) {
   };
 }
 
-var version = "0.2.3";
+var version = "0.2.4";
 
 var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
   _inherits(ParticleLaunch, _karas$Component);
@@ -131,14 +131,14 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
       var _this2 = this;
 
       var props = this.props;
-      var list = props.list,
+      var _props$list = props.list,
+          list = _props$list === void 0 ? [] : _props$list,
           _props$num = props.num,
           num = _props$num === void 0 ? 0 : _props$num,
           _props$initNum = props.initNum,
-          initNum = _props$initNum === void 0 ? 0 : _props$initNum,
-          _props$interval = props.interval,
-          interval = _props$interval === void 0 ? 300 : _props$interval,
-          _props$intervalNum = props.intervalNum,
+          initNum = _props$initNum === void 0 ? 0 : _props$initNum;
+          props.interval;
+          var _props$intervalNum = props.intervalNum,
           intervalNum = _props$intervalNum === void 0 ? 1 : _props$intervalNum,
           _props$delay = props.delay,
           delay = _props$delay === void 0 ? 0 : _props$delay,
@@ -150,8 +150,9 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
 
       var dataList = [];
       var i = 0,
-          length = list.length,
-          first = true;
+          length = list.length;
+      var playCount = 0,
+          count = 0;
       var fake = this.ref.fake;
 
       var cb = this.cb = function (diff) {
@@ -169,6 +170,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
           while (initNum-- > 0) {
             i++;
             i %= length;
+            count++;
             dataList.push(_this2.genItem(list[i]));
           } // 已有的每个粒子时间增加计算位置，结束的则消失
 
@@ -200,22 +202,25 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
             }
           }
 
-          if (_this2.count++ >= num) {
+          if (count >= num) {
             return;
-          } // 每隔一段时间增加一个粒子，或者第一个不需要等待
+          }
 
+          if (_this2.animation.playCount > playCount) {
+            var n = _this2.animation.playCount - playCount;
+            playCount = _this2.animation.playCount;
 
-          if (_this2.time >= interval || first) {
-            if (first) {
-              first = false;
-            } else {
-              _this2.time -= interval;
-            }
+            outer: while (n--) {
+              for (var _j = 0; _j < intervalNum; _j++) {
+                i++;
+                i %= length;
+                count++;
+                dataList.push(_this2.genItem(list[i]));
 
-            for (var _j = 0; _j < intervalNum; _j++) {
-              i++;
-              i %= length;
-              dataList.push(_this2.genItem(list[i]));
+                if (count >= num) {
+                  break outer;
+                }
+              }
             }
           }
         }
@@ -236,7 +241,9 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
         autoPlay: autoPlay
       });
 
-      fake.render = function (renderMode, lv, ctx) {
+      fake.render = function (renderMode, lv, ctx, cache) {
+        var dx = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : 0;
+        var dy = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : 0;
         var sx = fake.sx,
             sy = fake.sy;
         var alpha = ctx.globalAlpha;
@@ -257,14 +264,14 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
               var diff = time % blink.duration; // 偶数from2to，奇数to2from
 
               if (_num % 2 === 0) {
-                opacity *= blink.from - (blink.from - blink.to) * diff / blink.duration;
+                opacity *= blink.from + (blink.to - blink.from) * diff / blink.duration;
               } else {
-                opacity *= blink.to + (blink.from - blink.to) * diff / blink.duration;
+                opacity *= blink.to - (blink.to - blink.from) * diff / blink.duration;
               }
             }
 
             ctx.globalAlpha = opacity;
-            ctx.drawImage(item.source, item.nowX + sx, item.nowY + sy, item.width, item.height);
+            ctx.drawImage(item.source, item.nowX + sx + dx, item.nowY + sy + dy, item.width, item.height);
           }
         });
         ctx.globalAlpha = alpha;
@@ -280,13 +287,13 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
       };
 
       if (Array.isArray(item.x)) {
-        o.x = item.x[0] + Math.random() * (item.x[1] - item.x[0]) * width;
+        o.x = (item.x[0] + Math.random() * (item.x[1] - item.x[0])) * width;
       } else {
         o.x = item.x * width;
       }
 
       if (Array.isArray(item.y)) {
-        o.y = item.y[0] + Math.random() * (item.y[1] - item.y[0]) * height;
+        o.y = (item.y[0] + Math.random() * (item.y[1] - item.y[0])) * height;
       } else {
         o.y = item.y * height;
       }
@@ -317,7 +324,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
 
       if (Array.isArray(item.deg)) {
         deg = item.deg[0] + Math.random() * (item.deg[1] - item.deg[0]);
-      } else {
+      } else if (deg) {
         deg = item.deg;
       }
 
@@ -325,7 +332,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
 
       if (Array.isArray(item.distance)) {
         distance = (item.distance[0] + Math.random() * (item.distance[1] - item.distance[0])) * width;
-      } else {
+      } else if (distance) {
         distance = item.distance * width;
       }
 
@@ -355,8 +362,10 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
 
       if (item.blink) {
         var _item$blink = item.blink,
-            from = _item$blink.from,
-            to = _item$blink.to,
+            _item$blink$from = _item$blink.from,
+            from = _item$blink$from === void 0 ? 0 : _item$blink$from,
+            _item$blink$to = _item$blink.to,
+            to = _item$blink$to === void 0 ? 1 : _item$blink$to,
             duration = _item$blink.duration;
 
         if (Array.isArray(duration)) {
@@ -367,6 +376,12 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
           o.blink = {
             from: from[0] + (Math.random() * from[1] - from[0]),
             to: to[0] + (Math.random() * to[1] - to[0]),
+            duration: duration
+          };
+        } else {
+          o.blink = {
+            from: from,
+            to: to,
             duration: duration
           };
         }
@@ -382,13 +397,19 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
           _duration = _duration[0] + Math.random() * (_duration[1] - _duration[0]);
         }
 
-        if (Array.isArray(_from) && Array.isArray(_to)) {
-          o.blink = {
-            from: _from[0] + (Math.random() * _from[1] - _from[0]),
-            to: _to[0] + (Math.random() * _to[1] - _to[0]),
-            duration: _duration
-          };
+        if (Array.isArray(_from)) {
+          _from = _from[0] + Math.random() * (_from[1] - _from[0]);
         }
+
+        if (Array.isArray(_to)) {
+          _to = _to[0] + Math.random() * (_to[1] - _to[0]);
+        }
+
+        o.blink = {
+          from: _from,
+          to: _to,
+          duration: _duration
+        };
       }
 
       if (item.easing) {

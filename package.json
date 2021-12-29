@@ -1,6 +1,6 @@
 {
   "name": "karas-particle-launch",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "ParticularBoom component for karas.",
   "maintainers": [
     {
@@ -17,7 +17,7 @@
     "url": "git://github.com/karasjs/karas-particle-launch.git"
   },
   "peerDependencies": {
-    "karas": "^0.59.15"
+    "karas": "^0.66.9"
   },
   "dependencies": {
   },
