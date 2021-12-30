@@ -101,7 +101,7 @@ function _createSuper(Derived) {
   };
 }
 
-var version = "0.2.4";
+var version = "0.2.5";
 
 var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
   _inherits(ParticleLaunch, _karas$Component);
@@ -136,9 +136,10 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
           _props$num = props.num,
           num = _props$num === void 0 ? 0 : _props$num,
           _props$initNum = props.initNum,
-          initNum = _props$initNum === void 0 ? 0 : _props$initNum;
-          props.interval;
-          var _props$intervalNum = props.intervalNum,
+          initNum = _props$initNum === void 0 ? 0 : _props$initNum,
+          _props$interval = props.interval,
+          interval = _props$interval === void 0 ? 300 : _props$interval,
+          _props$intervalNum = props.intervalNum,
           intervalNum = _props$intervalNum === void 0 ? 1 : _props$intervalNum,
           _props$delay = props.delay,
           delay = _props$delay === void 0 ? 0 : _props$delay,
@@ -151,7 +152,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
       var dataList = [];
       var i = 0,
           length = list.length;
-      var playCount = 0,
+      var lastTime = 0,
           count = 0;
       var fake = this.ref.fake;
 
@@ -167,11 +168,15 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
           _this2.time += diff;
           delay = 0; // 如果有初始例子
 
-          while (initNum-- > 0) {
-            i++;
-            i %= length;
-            count++;
-            dataList.push(_this2.genItem(list[i]));
+          if (initNum > 0) {
+            lastTime = _this2.time;
+
+            while (initNum-- > 0) {
+              i++;
+              i %= length;
+              count++;
+              dataList.push(_this2.genItem(list[i]));
+            }
           } // 已有的每个粒子时间增加计算位置，结束的则消失
 
 
@@ -206,20 +211,17 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
             return;
           }
 
-          if (_this2.animation.playCount > playCount) {
-            var n = _this2.animation.playCount - playCount;
-            playCount = _this2.animation.playCount;
+          if (_this2.time >= lastTime + interval) {
+            lastTime = _this2.time;
 
-            outer: while (n--) {
-              for (var _j = 0; _j < intervalNum; _j++) {
-                i++;
-                i %= length;
-                count++;
-                dataList.push(_this2.genItem(list[i]));
+            for (var _j = 0; _j < intervalNum; _j++) {
+              i++;
+              i %= length;
+              count++;
+              dataList.push(_this2.genItem(list[i]));
 
-                if (count >= num) {
-                  break outer;
-                }
+              if (count >= num) {
+                break;
               }
             }
           }
@@ -306,18 +308,14 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
 
       if (Array.isArray(item.width)) {
         o.width = item.width[0] + Math.random() * (item.width[1] - item.width[0]);
-      } else {
+      } else if (!karas.util.isNil(item.width)) {
         o.width = item.width;
       }
 
-      if (item.ar) {
-        o.height = o.width * item.ar;
-      } else {
-        if (Array.isArray(item.height)) {
-          o.height = item.height[0] + Math.random() * (item.height[1] - item.height[0]);
-        } else {
-          o.height = item.height;
-        }
+      if (Array.isArray(item.height)) {
+        o.height = item.height[0] + Math.random() * (item.height[1] - item.height[0]);
+      } else if (!karas.util.isNil(item.height)) {
+        o.height = item.height;
       }
 
       var deg = 0;
@@ -420,6 +418,14 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
         karas.inject.measureImg(item.url, function (res) {
           if (res.success) {
             o.source = res.source;
+
+            if (!(karas.util.isNil(o.width) && karas.util.isNil(o.height))) {
+              if (karas.util.isNil(o.width)) {
+                o.width = res.width / res.height * o.height;
+              } else if (karas.util.isNil(o.height)) {
+                o.height = o.width * res.height / res.width;
+              }
+            }
           }
         });
       }

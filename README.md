@@ -29,7 +29,7 @@ karas.render(
                       y: 0.5,
                       distance: [0.2, 1.2],
                       deg: [0, 360],
-                      width: 5,
+                      width: 5, // width和height只传1个的话意为保持宽高比
                       height: 5,
                       easing: 'ease-out',
                       blink: {
