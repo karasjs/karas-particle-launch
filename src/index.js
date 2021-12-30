@@ -1,6 +1,17 @@
 import karas from 'karas';
 import { version } from '../package.json';
 
+const {
+  enums: {
+    STYLE_KEY: {
+      TRANSFORM_ORIGIN,
+    },
+  },
+  util: {
+    isNil,
+  },
+} = karas;
+
 class ParticleLaunch extends karas.Component {
   constructor(props) {
     super(props);
@@ -115,7 +126,28 @@ class ParticleLaunch extends karas.Component {
             }
           }
           ctx.globalAlpha = opacity;
-          ctx.drawImage(item.source, item.nowX + sx + dx, item.nowY + sy + dy, item.width, item.height);
+          let x = item.nowX + sx + dx;
+          let y = item.nowY + sy + dy;
+          if(item.rotate) {
+            let m = this.matrixEvent;
+            let computedStyle = this.computedStyle;
+            let tfo = computedStyle[TRANSFORM_ORIGIN].slice(0);
+            tfo[0] += x;
+            tfo[1] += y;
+            m = karas.math.matrix.multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, 0, 1]);
+            let deg = item.deg;
+            let r = karas.math.geom.d2r(deg);
+            let t = karas.math.matrix.identity();
+            let sin = Math.sin(r);
+            let cos = Math.cos(r);
+            t[0] = t[5] = cos;
+            t[1] = sin;
+            t[4] = -sin;
+            m = karas.math.matrix.multiply(m, t);
+            m = karas.math.matrix.multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -x, -y, 0, 1]);
+            ctx.setTransform(m[0], m[1], m[4], m[5], m[12], m[13]);
+          }
+          ctx.drawImage(item.source, x, y, item.width, item.height);
         }
       });
       ctx.globalAlpha = alpha;
@@ -148,13 +180,13 @@ class ParticleLaunch extends karas.Component {
     if(Array.isArray(item.width)) {
       o.width = item.width[0] + Math.random() * (item.width[1] - item.width[0]);
     }
-    else if(!karas.util.isNil(item.width)) {
+    else if(!isNil(item.width)) {
       o.width = item.width;
     }
     if(Array.isArray(item.height)) {
       o.height = item.height[0] + Math.random() * (item.height[1] - item.height[0]);
     }
-    else if(!karas.util.isNil(item.height)) {
+    else if(!isNil(item.height)) {
       o.height = item.height;
     }
     let deg = 0;
@@ -163,6 +195,10 @@ class ParticleLaunch extends karas.Component {
     }
     else if(deg) {
       deg = item.deg;
+    }
+    o.deg = deg;
+    if(item.rotate === true) {
+      o.rotate = true;
     }
     let distance = 0;
     if(Array.isArray(item.distance)) {
@@ -234,17 +270,17 @@ class ParticleLaunch extends karas.Component {
       };
     }
     if(item.easing) {
-      item.easing = karas.animate.easing.getEasing(item.easing);
+      o.easing = karas.animate.easing.getEasing(item.easing);
     }
     if(item.url) {
       karas.inject.measureImg(item.url, function(res) {
         if(res.success) {
           o.source = res.source;
-          if(!(karas.util.isNil(o.width) && karas.util.isNil(o.height))) {
-            if(karas.util.isNil(o.width)) {
+          if(!(isNil(o.width) && isNil(o.height))) {
+            if(isNil(o.width)) {
               o.width = res.width / res.height * o.height;
             }
-            else if(karas.util.isNil(o.height)) {
+            else if(isNil(o.height)) {
               o.height = o.width * res.height / res.width;
             }
           }

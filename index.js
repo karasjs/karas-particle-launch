@@ -109,7 +109,10 @@
     };
   }
 
-  var version = "0.2.5";
+  var version = "0.2.6";
+
+  var TRANSFORM_ORIGIN = karas__default['default'].enums.STYLE_KEY.TRANSFORM_ORIGIN,
+      isNil = karas__default['default'].util.isNil;
 
   var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
     _inherits(ParticleLaunch, _karas$Component);
@@ -281,7 +284,30 @@
               }
 
               ctx.globalAlpha = opacity;
-              ctx.drawImage(item.source, item.nowX + sx + dx, item.nowY + sy + dy, item.width, item.height);
+              var x = item.nowX + sx + dx;
+              var y = item.nowY + sy + dy;
+
+              if (item.rotate) {
+                var m = _this2.matrixEvent;
+                var computedStyle = _this2.computedStyle;
+                var tfo = computedStyle[TRANSFORM_ORIGIN].slice(0);
+                tfo[0] += x;
+                tfo[1] += y;
+                m = karas__default['default'].math.matrix.multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, 0, 1]);
+                var deg = item.deg;
+                var r = karas__default['default'].math.geom.d2r(deg);
+                var t = karas__default['default'].math.matrix.identity();
+                var sin = Math.sin(r);
+                var cos = Math.cos(r);
+                t[0] = t[5] = cos;
+                t[1] = sin;
+                t[4] = -sin;
+                m = karas__default['default'].math.matrix.multiply(m, t);
+                m = karas__default['default'].math.matrix.multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -x, -y, 0, 1]);
+                ctx.setTransform(m[0], m[1], m[4], m[5], m[12], m[13]);
+              }
+
+              ctx.drawImage(item.source, x, y, item.width, item.height);
             }
           });
           ctx.globalAlpha = alpha;
@@ -316,13 +342,13 @@
 
         if (Array.isArray(item.width)) {
           o.width = item.width[0] + Math.random() * (item.width[1] - item.width[0]);
-        } else if (!karas__default['default'].util.isNil(item.width)) {
+        } else if (!isNil(item.width)) {
           o.width = item.width;
         }
 
         if (Array.isArray(item.height)) {
           o.height = item.height[0] + Math.random() * (item.height[1] - item.height[0]);
-        } else if (!karas__default['default'].util.isNil(item.height)) {
+        } else if (!isNil(item.height)) {
           o.height = item.height;
         }
 
@@ -332,6 +358,12 @@
           deg = item.deg[0] + Math.random() * (item.deg[1] - item.deg[0]);
         } else if (deg) {
           deg = item.deg;
+        }
+
+        o.deg = deg;
+
+        if (item.rotate === true) {
+          o.rotate = true;
         }
 
         var distance = 0;
@@ -419,7 +451,7 @@
         }
 
         if (item.easing) {
-          item.easing = karas__default['default'].animate.easing.getEasing(item.easing);
+          o.easing = karas__default['default'].animate.easing.getEasing(item.easing);
         }
 
         if (item.url) {
@@ -427,10 +459,10 @@
             if (res.success) {
               o.source = res.source;
 
-              if (!(karas__default['default'].util.isNil(o.width) && karas__default['default'].util.isNil(o.height))) {
-                if (karas__default['default'].util.isNil(o.width)) {
+              if (!(isNil(o.width) && isNil(o.height))) {
+                if (isNil(o.width)) {
                   o.width = res.width / res.height * o.height;
-                } else if (karas__default['default'].util.isNil(o.height)) {
+                } else if (isNil(o.height)) {
                   o.height = o.width * res.height / res.width;
                 }
               }

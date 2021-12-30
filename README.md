@@ -29,15 +29,16 @@ karas.render(
                       y: 0.5,
                       distance: [0.2, 1.2],
                       deg: [0, 360],
+                      rotate: true, // 是否跟随角度旋转
                       width: 5, // width和height只传1个的话意为保持宽高比
                       height: 5,
                       easing: 'ease-out',
-                      blink: {
+                      duration: 2000, // 时长
+                      blink: { // 是否闪烁
                         from: [0.6, 0.8],
                         to: [0.2, 0.4],
                         duration: [200, 300],
                       },
-                      duration: 2000, // 时长
                     }]} // 粒子随机选择位图
                     num={100} // 粒子总数限制
                     initNum={30} // 初始粒子数量，默认0
