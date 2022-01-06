@@ -109,10 +109,27 @@
     };
   }
 
-  var version = "0.2.6";
+  var version = "0.3.0";
 
-  var TRANSFORM_ORIGIN = karas__default['default'].enums.STYLE_KEY.TRANSFORM_ORIGIN,
-      isNil = karas__default['default'].util.isNil;
+  var _karas$enums = karas__default['default'].enums,
+      _karas$enums$STYLE_KE = _karas$enums.STYLE_KEY,
+      DISPLAY = _karas$enums$STYLE_KE.DISPLAY,
+      VISIBILITY = _karas$enums$STYLE_KE.VISIBILITY,
+      OPACITY = _karas$enums$STYLE_KE.OPACITY,
+      NODE_REFRESH_LV = _karas$enums.NODE_KEY.NODE_REFRESH_LV,
+      _karas$refresh = karas__default['default'].refresh,
+      REPAINT = _karas$refresh.level.REPAINT,
+      Cache = _karas$refresh.Cache,
+      isNil = karas__default['default'].util.isNil,
+      _karas$math = karas__default['default'].math,
+      d2r = _karas$math.geom.d2r,
+      _karas$math$matrix = _karas$math.matrix,
+      identity = _karas$math$matrix.identity,
+      multiply = _karas$math$matrix.multiply,
+      _karas$mode = karas__default['default'].mode,
+      CANVAS = _karas$mode.CANVAS,
+      WEBGL = _karas$mode.WEBGL;
+  var uuid = 0;
 
   var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
     _inherits(ParticleLaunch, _karas$Component);
@@ -137,9 +154,22 @@
         return false;
       }
     }, {
+      key: "componentWillUnmount",
+      value: function componentWillUnmount() {
+        var _this2 = this;
+
+        Object.keys(this.hashImg || {}).forEach(function (k) {
+          _this2.hashImg[k].release();
+        });
+        this.hashCache = {};
+        this.hashMatrix = {};
+        this.hashImg = {};
+        this.hashOpacity = {};
+      }
+    }, {
       key: "componentDidMount",
       value: function componentDidMount() {
-        var _this2 = this;
+        var _this3 = this;
 
         var props = this.props;
         var _props$list = props.list,
@@ -166,9 +196,13 @@
         var lastTime = 0,
             count = 0;
         var fake = this.ref.fake;
+        var hashCache = this.hashCache = {},
+            hashMatrix = this.hashMatrix = {},
+            hashImg = this.hashImg = {},
+            hashOpacity = this.hashOpacity = {};
 
         var cb = this.cb = function (diff) {
-          diff *= _this2.playbackRate;
+          diff *= _this3.playbackRate;
 
           if (delay > 0) {
             delay -= diff;
@@ -176,17 +210,17 @@
 
           if (delay <= 0) {
             diff += delay;
-            _this2.time += diff;
-            delay = 0; // 如果有初始例子
+            _this3.time += diff;
+            delay = 0; // 如果有初始粒子
 
             if (initNum > 0) {
-              lastTime = _this2.time;
+              lastTime = _this3.time;
 
               while (initNum-- > 0) {
                 i++;
                 i %= length;
                 count++;
-                dataList.push(_this2.genItem(list[i]));
+                dataList.push(_this3.genItem(list[i]));
               }
             } // 已有的每个粒子时间增加计算位置，结束的则消失
 
@@ -197,7 +231,9 @@
 
               if (item.time >= item.duration) {
                 dataList.splice(j, 1);
-              } else {
+                delete hashCache[item.id];
+                delete hashMatrix[item.id];
+              } else if (item.source) {
                 var x = item.x,
                     y = item.y,
                     width = item.width,
@@ -215,6 +251,7 @@
 
                 item.nowX = x + dx * percent - width * 0.5;
                 item.nowY = y + dy * percent - height * 0.5;
+                item.loaded = true;
               }
             }
 
@@ -222,14 +259,14 @@
               return;
             }
 
-            if (_this2.time >= lastTime + interval) {
-              lastTime = _this2.time;
+            if (_this3.time >= lastTime + interval) {
+              lastTime = _this3.time;
 
               for (var _j = 0; _j < intervalNum; _j++) {
                 i++;
                 i %= length;
                 count++;
-                dataList.push(_this2.genItem(list[i]));
+                dataList.push(_this3.genItem(list[i]));
 
                 if (count >= num) {
                   break;
@@ -253,23 +290,41 @@
           iterations: Infinity,
           autoPlay: autoPlay
         });
+        var __config = fake.__config;
+        __config[NODE_REFRESH_LV] = REPAINT;
+        var shadowRoot = this.shadowRoot;
+        var texCache = this.root.texCache;
 
         fake.render = function (renderMode, lv, ctx, cache) {
           var dx = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : 0;
           var dy = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : 0;
-          var sx = fake.sx,
-              sy = fake.sy;
-          var alpha = ctx.globalAlpha;
           var time = a.currentTime - delay;
 
           if (time < 0) {
             return;
           }
 
+          __config[NODE_REFRESH_LV] = REPAINT;
+          var computedStyle = shadowRoot.computedStyle;
+
+          if (computedStyle[DISPLAY] === 'none' || computedStyle[VISIBILITY] === 'hidden' || computedStyle[OPACITY] <= 0) {
+            return;
+          }
+
+          var sx = fake.sx,
+              sy = fake.sy;
+          var globalAlpha;
+
+          if (renderMode === CANVAS) {
+            globalAlpha = ctx.globalAlpha;
+          } else if (renderMode === WEBGL) {
+            globalAlpha = computedStyle[OPACITY];
+          }
+
           dataList.forEach(function (item) {
-            if (item.source) {
+            if (item.loaded) {
               var blink = item.blink;
-              var opacity = alpha;
+              var opacity = globalAlpha;
 
               if (blink) {
                 var _num = Math.floor(time / blink.duration);
@@ -283,34 +338,82 @@
                 }
               }
 
-              ctx.globalAlpha = opacity;
               var x = item.nowX + sx + dx;
               var y = item.nowY + sy + dy;
+              var m = _this3.matrixEvent;
+              var tfo = [x, y];
+              m = multiply([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tfo[0], tfo[1], 0, 1], m);
 
               if (item.rotate) {
-                var m = _this2.matrixEvent;
-                var computedStyle = _this2.computedStyle;
-                var tfo = computedStyle[TRANSFORM_ORIGIN].slice(0);
-                tfo[0] += x;
-                tfo[1] += y;
-                m = karas__default['default'].math.matrix.multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, 0, 1]);
-                var deg = item.deg;
-                var r = karas__default['default'].math.geom.d2r(deg);
-                var t = karas__default['default'].math.matrix.identity();
+                var r = d2r(item.deg);
+                var t = identity();
                 var sin = Math.sin(r);
                 var cos = Math.cos(r);
                 t[0] = t[5] = cos;
                 t[1] = sin;
                 t[4] = -sin;
-                m = karas__default['default'].math.matrix.multiply(m, t);
-                m = karas__default['default'].math.matrix.multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -x, -y, 0, 1]);
-                ctx.setTransform(m[0], m[1], m[4], m[5], m[12], m[13]);
+                m = multiply(m, t);
               }
 
-              ctx.drawImage(item.source, x, y, item.width, item.height);
+              if (renderMode === WEBGL) {
+                var _cache = hashCache[item.id];
+
+                if (!_cache) {
+                  var url = item.url;
+
+                  if (!hashImg[url]) {
+                    _cache = hashCache[item.id] = Cache.getInstance([x - 1, y - 1, x + item.sourceWidth + 1, y + item.sourceHeight + 1], x, y);
+
+                    _cache.ctx.drawImage(item.source, x + _cache.dx, y + _cache.dy);
+
+                    hashImg[url] = _cache;
+                  } else {
+                    var c = hashImg[url];
+                    _cache = hashCache[item.id] = new karas__default['default'].refresh.Cache(c.width, c.height, [x - 1, y - 1, x + item.sourceWidth + 1, y + item.sourceHeight + 1], c.page, c.pos, x, y);
+                  }
+                } else {
+                  _cache.__bbox = [x - 1, y - 1, x + item.sourceWidth + 1, y + item.sourceHeight + 1];
+                  _cache.__sx = x;
+                  _cache.__sy = y;
+                }
+
+                if (item.width !== item.sourceWidth && item.height !== item.sourceHeight) {
+                  var t2 = identity();
+                  t2[0] = item.width / item.sourceWidth;
+                  t2[5] = item.height / item.sourceHeight;
+                  m = multiply(m, t2);
+                }
+
+                m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -tfo[0], -tfo[1], 0, 1]); // console.log(x,y,opacity,m);
+
+                hashMatrix[item.id] = m;
+                hashOpacity[item.id] = opacity;
+              } else if (renderMode === CANVAS) {
+                ctx.globalAlpha = opacity;
+                m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -tfo[0], -tfo[1], 0, 1]);
+                ctx.setTransform(m[0], m[1], m[4], m[5], m[12], m[13]);
+                ctx.drawImage(item.source, x, y, item.width, item.height);
+              }
             }
           });
-          ctx.globalAlpha = alpha;
+
+          if (renderMode === CANVAS) {
+            ctx.globalAlpha = globalAlpha;
+          }
+        };
+
+        fake.__hookGlRender = function (gl, opacity, cx, cy, dx, dy, revertY) {
+          var computedStyle = shadowRoot.computedStyle;
+
+          if (computedStyle[DISPLAY] === 'none' || computedStyle[VISIBILITY] === 'hidden' || computedStyle[OPACITY] <= 0) {
+            return;
+          }
+
+          dataList.forEach(function (item) {
+            if (item.loaded) {
+              texCache.addTexAndDrawWhenLimit(gl, hashCache[item.id], hashOpacity[item.id], hashMatrix[item.id], cx, cy, dx, dy, revertY);
+            }
+          });
         };
       }
     }, {
@@ -319,7 +422,9 @@
         var width = this.width,
             height = this.height;
         var o = {
-          time: 0
+          id: uuid++,
+          time: 0,
+          url: item.url
         };
 
         if (Array.isArray(item.x)) {
@@ -458,6 +563,8 @@
           karas__default['default'].inject.measureImg(item.url, function (res) {
             if (res.success) {
               o.source = res.source;
+              o.sourceWidth = res.width;
+              o.sourceHeight = res.height;
 
               if (!(isNil(o.width) && isNil(o.height))) {
                 if (isNil(o.width)) {
@@ -506,7 +613,11 @@
       key: "render",
       value: function render() {
         return karas__default['default'].createElement("div", null, karas__default['default'].createElement("$polyline", {
-          ref: "fake"
+          ref: "fake",
+          style: {
+            width: 0,
+            visibility: 'hidden'
+          }
         }));
       }
     }]);

@@ -4,13 +4,39 @@ import { version } from '../package.json';
 const {
   enums: {
     STYLE_KEY: {
-      TRANSFORM_ORIGIN,
+      DISPLAY,
+      VISIBILITY,
+      OPACITY,
     },
+    NODE_KEY: {
+      NODE_REFRESH_LV,
+    },
+  },
+  refresh: {
+    level: {
+      REPAINT,
+    },
+    Cache,
   },
   util: {
     isNil,
   },
+  math: {
+    geom: {
+      d2r,
+    },
+    matrix: {
+      identity,
+      multiply,
+    },
+  },
+  mode: {
+    CANVAS,
+    WEBGL,
+  },
 } = karas;
+
+let uuid = 0;
 
 class ParticleLaunch extends karas.Component {
   constructor(props) {
@@ -24,6 +50,16 @@ class ParticleLaunch extends karas.Component {
     return false;
   }
 
+  componentWillUnmount() {
+    Object.keys(this.hashImg || {}).forEach(k => {
+      this.hashImg[k].release();
+    });
+    this.hashCache = {};
+    this.hashMatrix = {};
+    this.hashImg = {};
+    this.hashOpacity = {};
+  }
+
   componentDidMount() {
     let { props } = this;
     let { list = [], num = 0, initNum = 0, interval = 300, intervalNum = 1, delay = 0, autoPlay } = props;
@@ -34,6 +70,7 @@ class ParticleLaunch extends karas.Component {
     let i = 0, length = list.length;
     let lastTime = 0, count = 0;
     let fake = this.ref.fake;
+    let hashCache = this.hashCache = {}, hashMatrix = this.hashMatrix = {}, hashImg = this.hashImg = {}, hashOpacity = this.hashOpacity = {};
     let cb = this.cb = diff => {
       diff *= this.playbackRate;
       if(delay > 0) {
@@ -43,7 +80,7 @@ class ParticleLaunch extends karas.Component {
         diff += delay;
         this.time += diff;
         delay = 0;
-        // 如果有初始例子
+        // 如果有初始粒子
         if(initNum > 0) {
           lastTime = this.time;
           while(initNum-- > 0) {
@@ -59,8 +96,10 @@ class ParticleLaunch extends karas.Component {
           item.time += diff;
           if(item.time >= item.duration) {
             dataList.splice(j, 1);
+            delete hashCache[item.id];
+            delete hashMatrix[item.id];
           }
-          else {
+          else if(item.source) {
             let { x, y, width, height, dx, dy, time, duration, easing } = item;
             let percent = time / duration;
             if(easing) {
@@ -68,6 +107,7 @@ class ParticleLaunch extends karas.Component {
             }
             item.nowX = x + dx * percent - width * 0.5;
             item.nowY = y + dy * percent - height * 0.5;
+            item.loaded = true;
           }
         }
         if(count >= num) {
@@ -103,17 +143,34 @@ class ParticleLaunch extends karas.Component {
       iterations: Infinity,
       autoPlay,
     });
+    let __config = fake.__config;
+    __config[NODE_REFRESH_LV] = REPAINT;
+    let shadowRoot = this.shadowRoot;
+    let texCache = this.root.texCache;
     fake.render = (renderMode, lv, ctx, cache, dx = 0, dy = 0) => {
-      let { sx, sy } = fake;
-      let alpha = ctx.globalAlpha;
       let time = a.currentTime - delay;
       if(time < 0) {
         return;
       }
+      __config[NODE_REFRESH_LV] = REPAINT;
+      let computedStyle = shadowRoot.computedStyle;
+      if(computedStyle[DISPLAY] === 'none'
+        || computedStyle[VISIBILITY] === 'hidden'
+        || computedStyle[OPACITY] <= 0) {
+        return;
+      }
+      let { sx, sy } = fake;
+      let globalAlpha;
+      if(renderMode === CANVAS) {
+        globalAlpha = ctx.globalAlpha;
+      }
+      else if(renderMode === WEBGL) {
+        globalAlpha = computedStyle[OPACITY];
+      }
       dataList.forEach(item => {
-        if(item.source) {
+        if(item.loaded) {
           let blink = item.blink;
-          let opacity = alpha;
+          let opacity = globalAlpha;
           if(blink) {
             let num = Math.floor(time / blink.duration);
             let diff = time % blink.duration;
@@ -125,39 +182,91 @@ class ParticleLaunch extends karas.Component {
               opacity *= blink.to - (blink.to - blink.from) * diff / blink.duration;
             }
           }
-          ctx.globalAlpha = opacity;
           let x = item.nowX + sx + dx;
           let y = item.nowY + sy + dy;
+          let m = this.matrixEvent;
+          let tfo = [x, y];
+          m = multiply([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tfo[0], tfo[1], 0, 1], m);
           if(item.rotate) {
-            let m = this.matrixEvent;
-            let computedStyle = this.computedStyle;
-            let tfo = computedStyle[TRANSFORM_ORIGIN].slice(0);
-            tfo[0] += x;
-            tfo[1] += y;
-            m = karas.math.matrix.multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, 0, 1]);
-            let deg = item.deg;
-            let r = karas.math.geom.d2r(deg);
-            let t = karas.math.matrix.identity();
+            let r = d2r(item.deg);
+            let t = identity();
             let sin = Math.sin(r);
             let cos = Math.cos(r);
             t[0] = t[5] = cos;
             t[1] = sin;
             t[4] = -sin;
-            m = karas.math.matrix.multiply(m, t);
-            m = karas.math.matrix.multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -x, -y, 0, 1]);
-            ctx.setTransform(m[0], m[1], m[4], m[5], m[12], m[13]);
+            m = multiply(m, t);
           }
-          ctx.drawImage(item.source, x, y, item.width, item.height);
+          if(renderMode === WEBGL) {
+            let cache = hashCache[item.id];
+            if(!cache) {
+              let url = item.url;
+              if(!hashImg[url]) {
+                cache = hashCache[item.id] = Cache.getInstance(
+                  [x - 1, y - 1, x + item.sourceWidth + 1, y + item.sourceHeight + 1],
+                  x, y
+                );
+                cache.ctx.drawImage(item.source, x + cache.dx, y + cache.dy)
+                hashImg[url] = cache;
+              }
+              else {
+                let c = hashImg[url];
+                cache = hashCache[item.id] = new karas.refresh.Cache(
+                  c.width, c.height,
+                  [x - 1, y - 1, x + item.sourceWidth + 1, y + item.sourceHeight + 1],
+                  c.page, c.pos, x, y
+                );
+              }
+            }
+            else {
+              cache.__bbox = [x - 1, y - 1, x + item.sourceWidth + 1, y + item.sourceHeight + 1];
+              cache.__sx = x;
+              cache.__sy = y;
+            }
+            if(item.width !== item.sourceWidth && item.height !== item.sourceHeight) {
+              let t2 = identity();
+              t2[0] = item.width / item.sourceWidth;
+              t2[5] = item.height / item.sourceHeight;
+              m = multiply(m, t2);
+            }
+            m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -tfo[0], -tfo[1], 0, 1]);
+            // console.log(x,y,opacity,m);
+            hashMatrix[item.id] = m;
+            hashOpacity[item.id] = opacity;
+          }
+          else if(renderMode === CANVAS) {
+            ctx.globalAlpha = opacity;
+            m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -tfo[0], -tfo[1], 0, 1]);
+            ctx.setTransform(m[0], m[1], m[4], m[5], m[12], m[13]);
+            ctx.drawImage(item.source, x, y, item.width, item.height);
+          }
         }
       });
-      ctx.globalAlpha = alpha;
+      if(renderMode === CANVAS) {
+        ctx.globalAlpha = globalAlpha;
+      }
+    };
+    fake.__hookGlRender = function(gl, opacity, cx, cy, dx, dy, revertY) {
+      let computedStyle = shadowRoot.computedStyle;
+      if(computedStyle[DISPLAY] === 'none'
+        || computedStyle[VISIBILITY] === 'hidden'
+        || computedStyle[OPACITY] <= 0) {
+        return;
+      }
+      dataList.forEach(item => {
+        if(item.loaded) {
+          texCache.addTexAndDrawWhenLimit(gl, hashCache[item.id], hashOpacity[item.id], hashMatrix[item.id], cx, cy, dx, dy, revertY);
+        }
+      });
     };
   }
 
   genItem(item) {
     let { width, height } = this;
     let o = {
+      id: uuid++,
       time: 0,
+      url: item.url,
     };
     if(Array.isArray(item.x)) {
       o.x = (item.x[0] + Math.random() * (item.x[1] - item.x[0])) * width;
@@ -276,6 +385,8 @@ class ParticleLaunch extends karas.Component {
       karas.inject.measureImg(item.url, function(res) {
         if(res.success) {
           o.source = res.source;
+          o.sourceWidth = res.width;
+          o.sourceHeight = res.height;
           if(!(isNil(o.width) && isNil(o.height))) {
             if(isNil(o.width)) {
               o.width = res.width / res.height * o.height;
@@ -316,7 +427,7 @@ class ParticleLaunch extends karas.Component {
 
   render() {
     return <div>
-      <$polyline ref="fake"/>
+      <$polyline ref="fake" style={{width:0,visibility:'hidden'}}/>
     </div>;
   }
 }
