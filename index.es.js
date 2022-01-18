@@ -101,7 +101,7 @@ function _createSuper(Derived) {
   };
 }
 
-var version = "0.3.0";
+var version = "0.4.0";
 
 var _karas$enums = karas.enums,
     _karas$enums$STYLE_KE = _karas$enums.STYLE_KEY,
@@ -234,7 +234,10 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
                   dy = item.dy,
                   time = item.time,
                   duration = item.duration,
-                  easing = item.easing;
+                  easing = item.easing,
+                  blink = item.blink,
+                  fade = item.fade,
+                  scale = item.scale;
               var percent = time / duration;
 
               if (easing) {
@@ -243,6 +246,76 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
 
               item.nowX = x + dx * percent - width * 0.5;
               item.nowY = y + dy * percent - height * 0.5;
+              var opacity = 1;
+
+              if (blink) {
+                var _num = Math.floor(time / blink.duration);
+
+                var _diff = time % blink.duration;
+
+                var _easing = blink.easing;
+
+                var _percent = (blink.to - blink.from) * _diff / blink.duration;
+
+                if (_easing) {
+                  var timeFunction = karas.animate.easing.getEasing(_easing);
+
+                  if (timeFunction !== karas.animate.easing.linear) {
+                    _percent = timeFunction(_percent);
+                  }
+                } // 偶数from2to，奇数to2from
+
+
+                if (_num % 2 === 0) {
+                  opacity *= blink.from + _percent;
+                } else {
+                  opacity *= blink.to - _percent;
+                }
+              }
+
+              if (fade) {
+                var p = time / fade.duration;
+                p = Math.max(0, p);
+                p = Math.min(1, p);
+                var _easing2 = fade.easing;
+
+                if (_easing2) {
+                  var _timeFunction = karas.animate.easing.getEasing(_easing2);
+
+                  if (_timeFunction !== karas.animate.easing.linear) {
+                    p = _timeFunction(p);
+                  }
+                }
+
+                var alpha = fade.from + (fade.to - fade.from) * p;
+                alpha = Math.max(0, alpha);
+                alpha = Math.min(1, alpha);
+                opacity *= alpha;
+              }
+
+              item.opacity = opacity;
+              var sc = 1;
+
+              if (scale) {
+                var _p = time / fade.duration;
+
+                _p = Math.max(0, _p);
+                _p = Math.min(1, _p);
+                var _easing3 = fade.easing;
+
+                if (_easing3) {
+                  var _timeFunction2 = karas.animate.easing.getEasing(_easing3);
+
+                  if (_timeFunction2 !== karas.animate.easing.linear) {
+                    _p = _timeFunction2(_p);
+                  }
+                }
+
+                var s = scale.from + (scale.to - scale.from) * _p;
+                sc *= s;
+              }
+
+              item.sc = sc;
               item.loaded = true;
             }
           }
@@ -283,7 +356,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
         autoPlay: autoPlay
       });
       var __config = fake.__config;
-      __config[NODE_REFRESH_LV] = REPAINT;
+      __config[NODE_REFRESH_LV] |= REPAINT;
       var shadowRoot = this.shadowRoot;
       var texCache = this.root.texCache;
 
@@ -296,7 +369,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
           return;
         }
 
-        __config[NODE_REFRESH_LV] = REPAINT;
+        __config[NODE_REFRESH_LV] |= REPAINT;
         var computedStyle = shadowRoot.computedStyle;
 
         if (computedStyle[DISPLAY] === 'none' || computedStyle[VISIBILITY] === 'hidden' || computedStyle[OPACITY] <= 0) {
@@ -315,20 +388,8 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
 
         dataList.forEach(function (item) {
           if (item.loaded) {
-            var blink = item.blink;
             var opacity = globalAlpha;
-
-            if (blink) {
-              var _num = Math.floor(time / blink.duration);
-
-              var diff = time % blink.duration; // 偶数from2to，奇数to2from
-
-              if (_num % 2 === 0) {
-                opacity *= blink.from + (blink.to - blink.from) * diff / blink.duration;
-              } else {
-                opacity *= blink.to - (blink.to - blink.from) * diff / blink.duration;
-              }
-            }
+            opacity *= item.opacity; // 计算位置
 
             var x = item.nowX + sx + dx;
             var y = item.nowY + sy + dy;
@@ -345,6 +406,13 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
               t[1] = sin;
               t[4] = -sin;
               m = multiply(m, t);
+            }
+
+            if (item.sc && item.sc !== 1) {
+              var _t = identity();
+
+              _t[0] = _t[5] = _t[10] = item.sc;
+              m = multiply(m, _t);
             }
 
             if (renderMode === WEBGL) {
@@ -376,8 +444,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
                 m = multiply(m, t2);
               }
 
-              m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -tfo[0], -tfo[1], 0, 1]); // console.log(x,y,opacity,m);
-
+              m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -tfo[0], -tfo[1], 0, 1]);
               hashMatrix[item.id] = m;
               hashOpacity[item.id] = opacity;
             } else if (renderMode === CANVAS) {
@@ -494,58 +561,34 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
 
       o.dx = o.tx - o.x;
       o.dy = o.ty - o.y;
+      ['blink', 'fade', 'scale'].forEach(function (k) {
+        if (item[k]) {
+          var _item$k = item[k],
+              from = _item$k.from,
+              to = _item$k.to,
+              duration = _item$k.duration,
+              easing = _item$k.easing;
 
-      if (item.blink) {
-        var _item$blink = item.blink,
-            _item$blink$from = _item$blink.from,
-            from = _item$blink$from === void 0 ? 0 : _item$blink$from,
-            _item$blink$to = _item$blink.to,
-            to = _item$blink$to === void 0 ? 1 : _item$blink$to,
-            duration = _item$blink.duration;
+          if (Array.isArray(duration)) {
+            duration = duration[0] + Math.random() * (duration[1] - duration[0]);
+          }
 
-        if (Array.isArray(duration)) {
-          duration = duration[0] + Math.random() * (duration[1] - duration[0]);
-        }
+          if (Array.isArray(from)) {
+            from = from[0] + Math.random() * (from[1] - from[0]);
+          }
 
-        if (Array.isArray(from) && Array.isArray(to)) {
-          o.blink = {
-            from: from[0] + (Math.random() * from[1] - from[0]),
-            to: to[0] + (Math.random() * to[1] - to[0]),
-            duration: duration
-          };
-        } else {
-          o.blink = {
+          if (Array.isArray(to)) {
+            to = to[0] + Math.random() * (to[1] - to[0]);
+          }
+
+          o[k] = {
             from: from,
             to: to,
-            duration: duration
+            duration: duration,
+            easing: easing
           };
         }
-      }
-
-      if (item.blink) {
-        var _item$blink2 = item.blink,
-            _from = _item$blink2.from,
-            _to = _item$blink2.to,
-            _duration = _item$blink2.duration;
-
-        if (Array.isArray(_duration)) {
-          _duration = _duration[0] + Math.random() * (_duration[1] - _duration[0]);
-        }
-
-        if (Array.isArray(_from)) {
-          _from = _from[0] + Math.random() * (_from[1] - _from[0]);
-        }
-
-        if (Array.isArray(_to)) {
-          _to = _to[0] + Math.random() * (_to[1] - _to[0]);
-        }
-
-        o.blink = {
-          from: _from,
-          to: _to,
-          duration: _duration
-        };
-      }
+      });
 
       if (item.easing) {
         o.easing = karas.animate.easing.getEasing(item.easing);

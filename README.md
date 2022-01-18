@@ -38,6 +38,19 @@ karas.render(
                         from: [0.6, 0.8],
                         to: [0.2, 0.4],
                         duration: [200, 300],
+                        easing: 'ease-out',
+                      },
+                      fade: { // 是否透明度变化
+                        from: 1,
+                        to: [0, 0.2],
+                        duration: 2000,
+                        easing: 'ease-out',
+                      },
+                      scale: { // 是否缩放变化
+                        from: 1,
+                        to: [1.2, 1.6],
+                        duration: 2000,
+                        easing: 'ease-out',
                       },
                     }]} // 粒子随机选择位图
                     num={100} // 粒子总数限制

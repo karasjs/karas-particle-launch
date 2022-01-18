@@ -36,12 +36,25 @@
             from: [0.6, 0.8],
             to: [0.2, 0.4],
             duration: [200, 300],
+            easing: 'ease-out',
+          },
+          fade: {
+            from: 1,
+            to: [0, 0.2],
+            duration: 2000,
+            easing: 'ease-out',
+          },
+          scale: {
+            from: 1,
+            to: [3.2, 3.6],
+            duration: 2000,
+            easing: 'ease-out',
           },
           duration: 2000,
         }]}
-        interval={100}
+        interval={20}
         num={100}
-        delay={500}
+        delay={100}
       />
     </canvas>,
     '#test'
@@ -50,7 +63,7 @@
 <script src="homunculus.js"></script>
 <script src="yurine.js"></script>
 <script src="sea.js"></script>
-<script src="https://gw.alipayobjects.com/os/lib/karas/0.66.9/index.min.js"></script>
+<script src="https://gw.alipayobjects.com/os/lib/karas/0.66.10/index.min.js"></script>
 <script src="../index.js"></script>
 <script>
   seajs.config({

@@ -100,13 +100,66 @@ class ParticleLaunch extends karas.Component {
             delete hashMatrix[item.id];
           }
           else if(item.source) {
-            let { x, y, width, height, dx, dy, time, duration, easing } = item;
+            let { x, y, width, height, dx, dy, time, duration, easing, blink, fade, scale } = item;
             let percent = time / duration;
             if(easing) {
               percent = easing(percent);
             }
             item.nowX = x + dx * percent - width * 0.5;
             item.nowY = y + dy * percent - height * 0.5;
+            let opacity = 1;
+            if(blink) {
+              let num = Math.floor(time / blink.duration);
+              let diff = time % blink.duration;
+              let easing = blink.easing;
+              let percent = (blink.to - blink.from) * diff / blink.duration;
+              if(easing) {
+                let timeFunction = karas.animate.easing.getEasing(easing);
+                if(timeFunction !== karas.animate.easing.linear) {
+                  percent = timeFunction(percent);
+                }
+              }
+              // 偶数from2to，奇数to2from
+              if(num % 2 === 0) {
+                opacity *= blink.from + percent;
+              }
+              else {
+                opacity *= blink.to - percent;
+              }
+            }
+            if(fade) {
+              let p = time / fade.duration;
+              p = Math.max(0, p);
+              p = Math.min(1, p);
+              let easing = fade.easing;
+              if(easing) {
+                let timeFunction = karas.animate.easing.getEasing(easing);
+                if(timeFunction !== karas.animate.easing.linear) {
+                  p = timeFunction(p);
+                }
+              }
+              let alpha = fade.from + (fade.to - fade.from) * p;
+              alpha = Math.max(0, alpha);
+              alpha = Math.min(1, alpha);
+              opacity *= alpha;
+            }
+            item.opacity = opacity;
+            let sc = 1;
+            if(scale) {
+              let p = time / fade.duration;
+              p = Math.max(0, p);
+              p = Math.min(1, p);
+              let easing = fade.easing;
+              if(easing) {
+                let timeFunction = karas.animate.easing.getEasing(easing);
+                if(timeFunction !== karas.animate.easing.linear) {
+                  p = timeFunction(p);
+                }
+              }
+              let s = scale.from + (scale.to - scale.from) * p;
+              sc *= s;
+            }
+            item.sc = sc;
             item.loaded = true;
           }
         }
@@ -144,7 +197,7 @@ class ParticleLaunch extends karas.Component {
       autoPlay,
     });
     let __config = fake.__config;
-    __config[NODE_REFRESH_LV] = REPAINT;
+    __config[NODE_REFRESH_LV] |= REPAINT;
     let shadowRoot = this.shadowRoot;
     let texCache = this.root.texCache;
     fake.render = (renderMode, lv, ctx, cache, dx = 0, dy = 0) => {
@@ -152,7 +205,7 @@ class ParticleLaunch extends karas.Component {
       if(time < 0) {
         return;
       }
-      __config[NODE_REFRESH_LV] = REPAINT;
+      __config[NODE_REFRESH_LV] |= REPAINT;
       let computedStyle = shadowRoot.computedStyle;
       if(computedStyle[DISPLAY] === 'none'
         || computedStyle[VISIBILITY] === 'hidden'
@@ -169,19 +222,9 @@ class ParticleLaunch extends karas.Component {
       }
       dataList.forEach(item => {
         if(item.loaded) {
-          let blink = item.blink;
           let opacity = globalAlpha;
-          if(blink) {
-            let num = Math.floor(time / blink.duration);
-            let diff = time % blink.duration;
-            // 偶数from2to，奇数to2from
-            if(num % 2 === 0) {
-              opacity *= blink.from + (blink.to - blink.from) * diff / blink.duration;
-            }
-            else {
-              opacity *= blink.to - (blink.to - blink.from) * diff / blink.duration;
-            }
-          }
+          opacity *= item.opacity;
+          // 计算位置
           let x = item.nowX + sx + dx;
           let y = item.nowY + sy + dy;
           let m = this.matrixEvent;
@@ -195,6 +238,11 @@ class ParticleLaunch extends karas.Component {
             t[0] = t[5] = cos;
             t[1] = sin;
             t[4] = -sin;
+            m = multiply(m, t);
+          }
+          if(item.sc && item.sc !== 1) {
+            let t = identity();
+            t[0] = t[5] = t[10] = item.sc;
             m = multiply(m, t);
           }
           if(renderMode === WEBGL) {
@@ -230,7 +278,6 @@ class ParticleLaunch extends karas.Component {
               m = multiply(m, t2);
             }
             m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -tfo[0], -tfo[1], 0, 1]);
-            // console.log(x,y,opacity,m);
             hashMatrix[item.id] = m;
             hashOpacity[item.id] = opacity;
           }
@@ -341,43 +388,26 @@ class ParticleLaunch extends karas.Component {
     }
     o.dx = o.tx - o.x;
     o.dy = o.ty - o.y;
-    if(item.blink) {
-      let { from = 0, to = 1, duration } = item.blink;
-      if(Array.isArray(duration)) {
-        duration = duration[0] + Math.random() * (duration[1] - duration[0]);
-      }
-      if(Array.isArray(from) && Array.isArray(to)) {
-        o.blink = {
-          from: from[0] + (Math.random() * from[1] - from[0]),
-          to: to[0] + (Math.random() * to[1] - to[0]),
+    ['blink', 'fade', 'scale'].forEach(k => {
+      if(item[k]) {
+        let { from, to, duration, easing } = item[k];
+        if(Array.isArray(duration)) {
+          duration = duration[0] + Math.random() * (duration[1] - duration[0]);
+        }
+        if(Array.isArray(from)) {
+          from = from[0] + Math.random() * (from[1] - from[0]);
+        }
+        if(Array.isArray(to)) {
+          to = to[0] + Math.random() * (to[1] - to[0]);
+        }
+        o[k] = {
+          from,
+          to,
           duration,
+          easing,
         };
       }
-      else {
-        o.blink = {
-          from: from,
-          to: to,
-          duration,
-        };
-      }
-    }
-    if(item.blink) {
-      let { from, to, duration } = item.blink;
-      if(Array.isArray(duration)) {
-        duration = duration[0] + Math.random() * (duration[1] - duration[0]);
-      }
-      if(Array.isArray(from)) {
-        from = from[0] + Math.random() * (from[1] - from[0]);
-      }
-      if(Array.isArray(to)) {
-        to = to[0] + Math.random() * (to[1] - to[0]);
-      }
-      o.blink = {
-        from,
-        to,
-        duration,
-      };
-    }
+    });
     if(item.easing) {
       o.easing = karas.animate.easing.getEasing(item.easing);
     }
