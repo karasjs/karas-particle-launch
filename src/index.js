@@ -105,8 +105,8 @@ class ParticleLaunch extends karas.Component {
             if(easing) {
               percent = easing(percent);
             }
-            item.nowX = x + dx * percent - width * 0.5;
-            item.nowY = y + dy * percent - height * 0.5;
+            item.nowX = x + dx * percent;
+            item.nowY = y + dy * percent;
             let opacity = 1;
             if(blink) {
               let num = Math.floor(time / blink.duration);
@@ -225,10 +225,10 @@ class ParticleLaunch extends karas.Component {
           let opacity = globalAlpha;
           opacity *= item.opacity;
           // 计算位置
-          let x = item.nowX + sx + dx;
-          let y = item.nowY + sy + dy;
+          let x = item.nowX + sx + dx - item.width * 0.5;
+          let y = item.nowY + sy + dy - item.height * 0.5;
           let m = this.matrixEvent;
-          let tfo = [x, y];
+          let tfo = [item.nowX + sx + dx, item.nowY + sy + dy];
           m = multiply([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tfo[0], tfo[1], 0, 1], m);
           if(item.rotate) {
             let r = d2r(item.deg);
@@ -349,7 +349,7 @@ class ParticleLaunch extends karas.Component {
     if(Array.isArray(item.deg)) {
       deg = (item.deg[0] + Math.random() * (item.deg[1] - item.deg[0]));
     }
-    else if(deg) {
+    else if(item.deg) {
       deg = item.deg;
     }
     o.deg = deg;
@@ -360,7 +360,7 @@ class ParticleLaunch extends karas.Component {
     if(Array.isArray(item.distance)) {
       distance = (item.distance[0] + Math.random() * (item.distance[1] - item.distance[0])) * width;
     }
-    else if(distance) {
+    else if(item.distance) {
       distance = item.distance * width;
     }
     if(deg >= 270) {

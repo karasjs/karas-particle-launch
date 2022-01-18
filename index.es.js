@@ -101,7 +101,7 @@ function _createSuper(Derived) {
   };
 }
 
-var version = "0.4.0";
+var version = "0.4.1";
 
 var _karas$enums = karas.enums,
     _karas$enums$STYLE_KE = _karas$enums.STYLE_KEY,
@@ -227,10 +227,10 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
               delete hashMatrix[item.id];
             } else if (item.source) {
               var x = item.x,
-                  y = item.y,
-                  width = item.width,
-                  height = item.height,
-                  dx = item.dx,
+                  y = item.y;
+                  item.width;
+                  item.height;
+                  var dx = item.dx,
                   dy = item.dy,
                   time = item.time,
                   duration = item.duration,
@@ -244,8 +244,8 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
                 percent = easing(percent);
               }
 
-              item.nowX = x + dx * percent - width * 0.5;
-              item.nowY = y + dy * percent - height * 0.5;
+              item.nowX = x + dx * percent;
+              item.nowY = y + dy * percent;
               var opacity = 1;
 
               if (blink) {
@@ -391,10 +391,10 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
             var opacity = globalAlpha;
             opacity *= item.opacity; // 计算位置
 
-            var x = item.nowX + sx + dx;
-            var y = item.nowY + sy + dy;
+            var x = item.nowX + sx + dx - item.width * 0.5;
+            var y = item.nowY + sy + dy - item.height * 0.5;
             var m = _this3.matrixEvent;
-            var tfo = [x, y];
+            var tfo = [item.nowX + sx + dx, item.nowY + sy + dy];
             m = multiply([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tfo[0], tfo[1], 0, 1], m);
 
             if (item.rotate) {
@@ -520,7 +520,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
 
       if (Array.isArray(item.deg)) {
         deg = item.deg[0] + Math.random() * (item.deg[1] - item.deg[0]);
-      } else if (deg) {
+      } else if (item.deg) {
         deg = item.deg;
       }
 
@@ -534,7 +534,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
 
       if (Array.isArray(item.distance)) {
         distance = (item.distance[0] + Math.random() * (item.distance[1] - item.distance[0])) * width;
-      } else if (distance) {
+      } else if (item.distance) {
         distance = item.distance * width;
       }
 
