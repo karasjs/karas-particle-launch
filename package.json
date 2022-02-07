@@ -1,6 +1,6 @@
 {
   "name": "karas-particle-launch",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "ParticularBoom component for karas.",
   "maintainers": [
     {
@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "build": "rollup -c rollup.config.js",
-    "dev": "rollup -c rollup.config.js --watch"
+    "dev": "rollup -c rollup.dev.config.js --watch"
   },
   "repository": {
     "type": "git",
@@ -19,8 +19,7 @@
   "peerDependencies": {
     "karas": "^0.66.10"
   },
-  "dependencies": {
-  },
+  "dependencies": {},
   "devDependencies": {
     "@babel/core": "^7.8.7",
     "@babel/plugin-proposal-class-properties": "^7.8.3",
@@ -30,6 +29,7 @@
     "rollup": "^2.52.3",
     "rollup-plugin-babel": "^4.4.0",
     "rollup-plugin-sourcemaps": "^0.5.0",
+    "rollup-plugin-uglify": "^6.0.4",
     "webstorm-disable-index": "^1.2.0"
   },
   "main": "./index.js",
