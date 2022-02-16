@@ -70,9 +70,17 @@ class ParticleLaunch extends karas.Component {
     let i = 0, length = list.length;
     let lastTime = 0, count = 0;
     let fake = this.ref.fake;
-    let hashCache = this.hashCache = {}, hashMatrix = this.hashMatrix = {}, hashImg = this.hashImg = {}, hashOpacity = this.hashOpacity = {};
+    let root = this.root;
+    let hashCache = this.hashCache = {};
+    let hashMatrix = this.hashMatrix = {};
+    let hashImg = this.hashImg = {};
+    let hashOpacity = this.hashOpacity = {};
+    let hashTfo = this.hashTfo = {};
+    let currentTime = 0, maxTime = 0;
+    let hasStart;
     let cb = this.cb = diff => {
       diff *= this.playbackRate;
+      currentTime += diff;
       if(delay > 0) {
         delay -= diff;
       }
@@ -87,7 +95,9 @@ class ParticleLaunch extends karas.Component {
             i++;
             i %= length;
             count++;
-            dataList.push(this.genItem(list[i]));
+            let o = this.genItem(list[i]);
+            maxTime = Math.max(maxTime, currentTime + o.duration);
+            dataList.push(o);
           }
         }
         // 已有的每个粒子时间增加计算位置，结束的则消失
@@ -100,7 +110,7 @@ class ParticleLaunch extends karas.Component {
             delete hashMatrix[item.id];
           }
           else if(item.source) {
-            let { x, y, width, height, dx, dy, time, duration, easing, blink, fade, scale } = item;
+            let { x, y, dx, dy, time, duration, easing, blink, fade, scale } = item;
             let percent = time / duration;
             if(easing) {
               percent = easing(percent);
@@ -146,10 +156,10 @@ class ParticleLaunch extends karas.Component {
             item.opacity = opacity;
             let sc = 1;
             if(scale) {
-              let p = time / fade.duration;
+              let p = time / scale.duration;
               p = Math.max(0, p);
               p = Math.min(1, p);
-              let easing = fade.easing;
+              let easing = scale.easing;
               if(easing) {
                 let timeFunction = karas.animate.easing.getEasing(easing);
                 if(timeFunction !== karas.animate.easing.linear) {
@@ -161,18 +171,35 @@ class ParticleLaunch extends karas.Component {
             }
             item.sc = sc;
             item.loaded = true;
+            hasStart = true;
           }
         }
+        // 开始后每次都刷新，即便数据已空，要变成空白初始状态
+        if(hasStart) {
+          fake.clearCache();
+          let p = fake.domParent;
+          while (p) {
+            p.clearCache(true);
+            p = p.domParent;
+          }
+          root.addFocusRefreshTask();
+        }
         if(count >= num) {
+          if(currentTime >= maxTime) {
+            fake.removeFrameAnimate(cb);
+          }
           return;
         }
+        // 每隔interval开始生成这一阶段的粒子数据
         if(this.time >= lastTime + interval) {
           lastTime = this.time;
           for(let j = 0; j < intervalNum; j++) {
             i++;
             i %= length;
             count++;
-            dataList.push(this.genItem(list[i]))
+            let o = this.genItem(list[i]);
+            maxTime = Math.max(maxTime, currentTime + o.duration);
+            dataList.push(o);
             if(count >= num) {
               break;
             }
@@ -183,25 +210,12 @@ class ParticleLaunch extends karas.Component {
     if(autoPlay !== false) {
       fake.frameAnimate(cb);
     }
-    let a = this.animation = fake.animate([
-      {
-        opacity: 1,
-      },
-      {
-        opacity: 0,
-      }
-    ], {
-      duration: 1000,
-      delay,
-      iterations: Infinity,
-      autoPlay,
-    });
     let __config = fake.__config;
     __config[NODE_REFRESH_LV] |= REPAINT;
     let shadowRoot = this.shadowRoot;
     let texCache = this.root.texCache;
     fake.render = (renderMode, lv, ctx, cache, dx = 0, dy = 0) => {
-      let time = a.currentTime - delay;
+      let time = currentTime - delay;
       if(time < 0) {
         return;
       }
@@ -225,11 +239,15 @@ class ParticleLaunch extends karas.Component {
           let opacity = globalAlpha;
           opacity *= item.opacity;
           // 计算位置
-          let x = item.nowX + sx + dx - item.width * 0.5;
-          let y = item.nowY + sy + dy - item.height * 0.5;
-          let m = this.matrixEvent;
-          let tfo = [item.nowX + sx + dx, item.nowY + sy + dy];
-          m = multiply([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tfo[0], tfo[1], 0, 1], m);
+          let x = item.nowX + sx + dx;
+          let y = item.nowY + sy + dy;
+          let m = identity();
+          let tfo = [x + item.width * 0.5, y + item.height * 0.5];
+          if(renderMode === CANVAS) {
+            m = multiply([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tfo[0], tfo[1], 0, 1], m);
+          }
+          // 移动一半使得图形中心为计算位置的原点
+          m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -item.width * 0.5, -item.height * 0.5, 0, 1])
           if(item.rotate) {
             let r = d2r(item.deg);
             let t = identity();
@@ -246,6 +264,8 @@ class ParticleLaunch extends karas.Component {
             m = multiply(m, t);
           }
           if(renderMode === WEBGL) {
+            // webgl特殊记录，其tfo如果在局部缓存下偏移量要特殊计算，canvas无感知
+            hashTfo[item.id] = tfo;
             let cache = hashCache[item.id];
             if(!cache) {
               let url = item.url;
@@ -277,13 +297,18 @@ class ParticleLaunch extends karas.Component {
               t2[5] = item.height / item.sourceHeight;
               m = multiply(m, t2);
             }
-            m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -tfo[0], -tfo[1], 0, 1]);
             hashMatrix[item.id] = m;
             hashOpacity[item.id] = opacity;
           }
           else if(renderMode === CANVAS) {
             ctx.globalAlpha = opacity;
+            // canvas处理方式不一样，render的dx和dy包含了total的偏移计算考虑，可以无感知
             m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -tfo[0], -tfo[1], 0, 1]);
+            // 父级的m
+            let pm = this.matrixEvent;
+            if(pm) {
+              m = multiply(pm, m);
+            }
             ctx.setTransform(m[0], m[1], m[4], m[5], m[12], m[13]);
             ctx.drawImage(item.source, x, y, item.width, item.height);
           }
@@ -293,7 +318,7 @@ class ParticleLaunch extends karas.Component {
         ctx.globalAlpha = globalAlpha;
       }
     };
-    fake.__hookGlRender = function(gl, opacity, cx, cy, dx, dy, revertY) {
+    fake.hookGlRender = function(gl, opacity, matrix, cx, cy, dx, dy, revertY) {
       let computedStyle = shadowRoot.computedStyle;
       if(computedStyle[DISPLAY] === 'none'
         || computedStyle[VISIBILITY] === 'hidden'
@@ -302,7 +327,18 @@ class ParticleLaunch extends karas.Component {
       }
       dataList.forEach(item => {
         if(item.loaded) {
-          texCache.addTexAndDrawWhenLimit(gl, hashCache[item.id], hashOpacity[item.id], hashMatrix[item.id], cx, cy, dx, dy, revertY);
+          let id = item.id;
+          let tfo = hashTfo[id].slice(0);
+          tfo[0] += dx;
+          tfo[1] += dy;
+          let m = hashMatrix[id];
+          m = multiply([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tfo[0], tfo[1], 0, 1], m);
+          m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -tfo[0], -tfo[1], 0, 1]);
+          // 父级的m
+          if(matrix) {
+            m = multiply(matrix, m);
+          }
+          texCache.addTexAndDrawWhenLimit(gl, hashCache[id], hashOpacity[id], m, cx, cy, dx, dy, revertY);
         }
       });
     };
@@ -425,6 +461,10 @@ class ParticleLaunch extends karas.Component {
               o.height = o.width * res.height / res.width;
             }
           }
+          else {
+            o.width = res.width;
+            o.height = res.height;
+          }
         }
       });
     }
@@ -456,8 +496,8 @@ class ParticleLaunch extends karas.Component {
   }
 
   render() {
-    return <div>
-      <$polyline ref="fake" style={{width:0,visibility:'hidden'}}/>
+    return <div cacheAsBitmap={this.props.cacheAsBitmap}>
+      <$polyline ref="fake" style={{width:0,height:0,visibility:'hidden'}}/>
     </div>;
   }
 }
