@@ -117,7 +117,7 @@
     };
   }
 
-  var version = "0.5.0";
+  var version = "0.5.1";
 
   var _karas$enums = karas__default["default"].enums,
       _karas$enums$STYLE_KE = _karas$enums.STYLE_KEY,
@@ -356,7 +356,7 @@
                 _p2 = _p2.domParent;
               }
 
-              root.addFocusRefreshTask();
+              root.addForceRefreshTask();
             }
 
             if (count >= num) {

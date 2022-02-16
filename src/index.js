@@ -182,7 +182,7 @@ class ParticleLaunch extends karas.Component {
             p.clearCache(true);
             p = p.domParent;
           }
-          root.addFocusRefreshTask();
+          root.addForceRefreshTask();
         }
         if(count >= num) {
           if(currentTime >= maxTime) {
