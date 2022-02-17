@@ -109,7 +109,7 @@ function _createSuper(Derived) {
   };
 }
 
-var version = "0.6.0";
+var version = "0.6.1";
 
 var _karas$enums = karas.enums,
     _karas$enums$STYLE_KE = _karas$enums.STYLE_KEY,
@@ -728,11 +728,11 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
       return this.__num;
     },
     set: function set(v) {
-      if (/infinity/i.test(v)) {
-        v = Infinity;
+      if (v === Infinity || /infinity/i.test(v)) {
+        this.__num = Infinity;
+      } else {
+        this.__num = parseInt(v) || 0;
       }
-
-      this.__num = parseInt(v) || 0;
     }
   }, {
     key: "render",

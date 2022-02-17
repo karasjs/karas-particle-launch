@@ -526,10 +526,12 @@ class ParticleLaunch extends karas.Component {
   }
 
   set num(v) {
-    if(/infinity/i.test(v)) {
-      v = Infinity;
+    if(v === Infinity || /infinity/i.test(v)) {
+      this.__num = Infinity;
     }
-    this.__num = parseInt(v) || 0;
+    else {
+      this.__num = parseInt(v) || 0;
+    }
   }
 
   render() {
