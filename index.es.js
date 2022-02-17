@@ -109,7 +109,7 @@ function _createSuper(Derived) {
   };
 }
 
-var version = "0.5.1";
+var version = "0.6.0";
 
 var _karas$enums = karas.enums,
     _karas$enums$STYLE_KE = _karas$enums.STYLE_KEY,
@@ -120,7 +120,9 @@ var _karas$enums = karas.enums,
     _karas$refresh = karas.refresh,
     REPAINT = _karas$refresh.level.REPAINT,
     Cache = _karas$refresh.Cache,
-    isNil = karas.util.isNil,
+    _karas$util = karas.util,
+    isNil = _karas$util.isNil,
+    isFunction = _karas$util.isFunction,
     _karas$math = karas.math,
     d2r = _karas$math.geom.d2r,
     _karas$math$matrix = _karas$math.matrix,
@@ -145,6 +147,9 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
     _this.count = 0;
     _this.time = 0;
     _this.playbackRate = props.playbackRate || 1;
+    _this.interval = props.interval || 300;
+    _this.intervalNum = props.intervalNum || 1;
+    _this.num = props.num || 0;
     return _this;
   }
 
@@ -174,22 +179,11 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
       var props = this.props;
       var _props$list = props.list,
           list = _props$list === void 0 ? [] : _props$list,
-          _props$num = props.num,
-          num = _props$num === void 0 ? 0 : _props$num,
           _props$initNum = props.initNum,
           initNum = _props$initNum === void 0 ? 0 : _props$initNum,
-          _props$interval = props.interval,
-          interval = _props$interval === void 0 ? 300 : _props$interval,
-          _props$intervalNum = props.intervalNum,
-          intervalNum = _props$intervalNum === void 0 ? 1 : _props$intervalNum,
           _props$delay = props.delay,
           delay = _props$delay === void 0 ? 0 : _props$delay,
           autoPlay = props.autoPlay;
-
-      if (num === 'infinity' || num === 'Infinity') {
-        num = Infinity;
-      }
-
       var dataList = [];
       var i = 0,
           length = list.length;
@@ -265,7 +259,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
               var opacity = 1;
 
               if (blink) {
-                var _num = Math.floor(time / blink.duration);
+                var num = Math.floor(time / blink.duration);
 
                 var _diff = time % blink.duration;
 
@@ -282,7 +276,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
                 } // 偶数from2to，奇数to2from
 
 
-                if (_num % 2 === 0) {
+                if (num % 2 === 0) {
                   opacity *= blink.from + _percent;
                 } else {
                   opacity *= blink.to - _percent;
@@ -348,10 +342,12 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
               _p2 = _p2.domParent;
             }
 
-            root.addForceRefreshTask();
+            root.addForceRefreshTask(function () {
+              _this3.emit('frame');
+            });
           }
 
-          if (count >= num) {
+          if (count >= _this3.num) {
             if (currentTime >= maxTime) {
               fake.removeFrameAnimate(cb);
             }
@@ -360,10 +356,10 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
           } // 每隔interval开始生成这一阶段的粒子数据
 
 
-          if (_this3.time >= lastTime + interval) {
+          if (_this3.time >= lastTime + _this3.interval) {
             lastTime = _this3.time;
 
-            for (var _j = 0; _j < intervalNum; _j++) {
+            for (var _j = 0; _j < _this3.intervalNum; _j++) {
               i++;
               i %= length;
               count++;
@@ -373,7 +369,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
               maxTime = Math.max(maxTime, currentTime + _o.duration);
               dataList.push(_o);
 
-              if (count >= num) {
+              if (count >= _this3.num) {
                 break;
               }
             }
@@ -431,10 +427,10 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
             } // 移动一半使得图形中心为计算位置的原点
 
 
-            m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -item.width * 0.5, -item.height * 0.5, 0, 1]);
+            m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -item.width * 0.5, -item.height * 0.5, 0, 1]); // 保持方向角度于起点一致性，可以指定direction偏移
 
-            if (item.rotate) {
-              var r = d2r(item.deg);
+            if (!isNil(item.direction)) {
+              var r = d2r(item.deg) + d2r(item.direction);
               var t = identity();
               var sin = Math.sin(r);
               var cos = Math.cos(r);
@@ -536,7 +532,8 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
     key: "genItem",
     value: function genItem(item) {
       var width = this.width,
-          height = this.height;
+          height = this.height,
+          props = this.props;
       var o = {
         id: uuid++,
         time: 0,
@@ -582,9 +579,14 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
       }
 
       o.deg = deg;
+      var direction = parseFloat(item.direction);
 
-      if (item.rotate === true) {
-        o.rotate = true;
+      if (item.direction === true) {
+        direction = 0;
+      }
+
+      if (!isNaN(direction)) {
+        o.direction = direction;
       }
 
       var distance = 0;
@@ -672,25 +674,21 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
         });
       }
 
+      if (props.hookData && isFunction(props.hookData)) {
+        o = props.hookData(o);
+      }
+
       return o;
     }
   }, {
     key: "pause",
     value: function pause() {
       this.ref.fake.removeFrameAnimate(this.cb);
-
-      if (this.animation) {
-        this.animation.pause();
-      }
     }
   }, {
     key: "resume",
     value: function resume() {
       this.ref.fake.frameAnimate(this.cb);
-
-      if (this.animation) {
-        this.animation.resume();
-      }
     }
   }, {
     key: "play",
@@ -699,10 +697,42 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
       this.time = 0;
       this.ref.fake.removeFrameAnimate(this.cb);
       this.ref.fake.frameAnimate(this.cb);
-
-      if (this.animation) {
-        this.animation.play();
+    }
+  }, {
+    key: "playbackRate",
+    get: function get() {
+      return this.__playbackRate;
+    },
+    set: function set(v) {
+      this.__playbackRate = parseFloat(v) || 1;
+    }
+  }, {
+    key: "interval",
+    get: function get() {
+      return this.__interval;
+    },
+    set: function set(v) {
+      this.__interval = parseInt(v) || 300;
+    }
+  }, {
+    key: "intervalNum",
+    get: function get() {
+      return this.__intervalNum;
+    },
+    set: function set(v) {
+      this.__intervalNum = parseInt(v) || 1;
+    }
+  }, {
+    key: "num",
+    get: function get() {
+      return this.__num;
+    },
+    set: function set(v) {
+      if (/infinity/i.test(v)) {
+        v = Infinity;
       }
+
+      this.__num = parseInt(v) || 0;
     }
   }, {
     key: "render",

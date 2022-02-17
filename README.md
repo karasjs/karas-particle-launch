@@ -29,7 +29,7 @@ karas.render(
                       y: 0.5,
                       distance: [0.2, 1.2],
                       deg: [0, 360],
-                      rotate: true, // 是否跟随角度旋转
+                      direction: 10, // 是否跟随角度旋转，值是对原本图片的偏移量，可以为0
                       width: 5, // width和height只传1个的话意为保持宽高比
                       height: 5,
                       easing: 'ease-out',
@@ -66,12 +66,18 @@ karas.render(
 ```
 
 ### method
-* pause()
-* resume()
-* play()
+* pause() 暂停
+* resume() 恢复
+* play() 从头播放
 
 ### get/set
 * playbackRate 播放速率
+* interval 发射间隔
+* intervalNum 每轮发射数量
+* num 总粒子数量
+
+### event
+* frame 每次刷新后触发
 
 # License
 [MIT License]

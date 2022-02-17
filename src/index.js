@@ -20,6 +20,7 @@ const {
   },
   util: {
     isNil,
+    isFunction,
   },
   math: {
     geom: {
@@ -44,6 +45,9 @@ class ParticleLaunch extends karas.Component {
     this.count = 0;
     this.time = 0;
     this.playbackRate = props.playbackRate || 1;
+    this.interval = props.interval || 300;
+    this.intervalNum = props.intervalNum || 1;
+    this.num = props.num || 0;
   }
 
   shouldComponentUpdate() {
@@ -62,10 +66,7 @@ class ParticleLaunch extends karas.Component {
 
   componentDidMount() {
     let { props } = this;
-    let { list = [], num = 0, initNum = 0, interval = 300, intervalNum = 1, delay = 0, autoPlay } = props;
-    if(num === 'infinity' || num === 'Infinity') {
-      num = Infinity;
-    }
+    let { list = [], initNum = 0, delay = 0, autoPlay } = props;
     let dataList = [];
     let i = 0, length = list.length;
     let lastTime = 0, count = 0;
@@ -182,25 +183,27 @@ class ParticleLaunch extends karas.Component {
             p.clearCache(true);
             p = p.domParent;
           }
-          root.addForceRefreshTask();
+          root.addForceRefreshTask(() => {
+            this.emit('frame');
+          });
         }
-        if(count >= num) {
+        if(count >= this.num) {
           if(currentTime >= maxTime) {
             fake.removeFrameAnimate(cb);
           }
           return;
         }
         // 每隔interval开始生成这一阶段的粒子数据
-        if(this.time >= lastTime + interval) {
+        if(this.time >= lastTime + this.interval) {
           lastTime = this.time;
-          for(let j = 0; j < intervalNum; j++) {
+          for(let j = 0; j < this.intervalNum; j++) {
             i++;
             i %= length;
             count++;
             let o = this.genItem(list[i]);
             maxTime = Math.max(maxTime, currentTime + o.duration);
             dataList.push(o);
-            if(count >= num) {
+            if(count >= this.num) {
               break;
             }
           }
@@ -248,8 +251,9 @@ class ParticleLaunch extends karas.Component {
           }
           // 移动一半使得图形中心为计算位置的原点
           m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -item.width * 0.5, -item.height * 0.5, 0, 1])
-          if(item.rotate) {
-            let r = d2r(item.deg);
+          // 保持方向角度于起点一致性，可以指定direction偏移
+          if(!isNil(item.direction)) {
+            let r = d2r(item.deg) + d2r(item.direction);
             let t = identity();
             let sin = Math.sin(r);
             let cos = Math.cos(r);
@@ -345,7 +349,7 @@ class ParticleLaunch extends karas.Component {
   }
 
   genItem(item) {
-    let { width, height } = this;
+    let { width, height, props } = this;
     let o = {
       id: uuid++,
       time: 0,
@@ -389,8 +393,12 @@ class ParticleLaunch extends karas.Component {
       deg = item.deg;
     }
     o.deg = deg;
-    if(item.rotate === true) {
-      o.rotate = true;
+    let direction = parseFloat(item.direction);
+    if(item.direction === true) {
+      direction = 0;
+    }
+    if(!isNaN(direction)) {
+      o.direction = direction;
     }
     let distance = 0;
     if(Array.isArray(item.distance)) {
@@ -468,21 +476,18 @@ class ParticleLaunch extends karas.Component {
         }
       });
     }
+    if(props.hookData && isFunction(props.hookData)) {
+      o = props.hookData(o);
+    }
     return o;
   }
 
   pause() {
     this.ref.fake.removeFrameAnimate(this.cb);
-    if(this.animation) {
-      this.animation.pause();
-    }
   }
 
   resume() {
     this.ref.fake.frameAnimate(this.cb);
-    if(this.animation) {
-      this.animation.resume();
-    }
   }
 
   play() {
@@ -490,9 +495,41 @@ class ParticleLaunch extends karas.Component {
     this.time = 0;
     this.ref.fake.removeFrameAnimate(this.cb);
     this.ref.fake.frameAnimate(this.cb);
-    if(this.animation) {
-      this.animation.play();
+  }
+
+  get playbackRate() {
+    return this.__playbackRate;
+  }
+
+  set playbackRate(v) {
+    this.__playbackRate = parseFloat(v) || 1;
+  }
+
+  get interval() {
+    return this.__interval;
+  }
+
+  get intervalNum() {
+    return this.__intervalNum;
+  }
+
+  set intervalNum(v) {
+    this.__intervalNum = parseInt(v) || 1;
+  }
+
+  set interval(v) {
+    this.__interval = parseInt(v) || 300;
+  }
+
+  get num() {
+    return this.__num;
+  }
+
+  set num(v) {
+    if(/infinity/i.test(v)) {
+      v = Infinity;
     }
+    this.__num = parseInt(v) || 0;
   }
 
   render() {
