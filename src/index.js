@@ -62,6 +62,7 @@ class ParticleLaunch extends karas.Component {
     this.hashMatrix = {};
     this.hashImg = {};
     this.hashOpacity = {};
+    this.hashTfo = {};
   }
 
   componentDidMount() {
@@ -407,6 +408,7 @@ class ParticleLaunch extends karas.Component {
     else if(item.distance) {
       distance = item.distance * width;
     }
+    o.distance = distance;
     if(deg >= 270) {
       deg = 360 - deg;
       deg = karas.math.geom.d2r(deg);
@@ -430,6 +432,7 @@ class ParticleLaunch extends karas.Component {
       o.tx = o.x + distance * Math.cos(deg);
       o.ty = o.y + distance * Math.sin(deg);
     }
+    o.deg = deg;
     o.dx = o.tx - o.x;
     o.dy = o.ty - o.y;
     ['blink', 'fade', 'scale'].forEach(k => {

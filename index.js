@@ -117,7 +117,7 @@
     };
   }
 
-  var version = "0.6.1";
+  var version = "0.6.4";
 
   var _karas$enums = karas__default["default"].enums,
       _karas$enums$STYLE_KE = _karas$enums.STYLE_KEY,
@@ -178,6 +178,7 @@
         this.hashMatrix = {};
         this.hashImg = {};
         this.hashOpacity = {};
+        this.hashTfo = {};
       }
     }, {
       key: "componentDidMount",
@@ -605,6 +606,8 @@
           distance = item.distance * width;
         }
 
+        o.distance = distance;
+
         if (deg >= 270) {
           deg = 360 - deg;
           deg = karas__default["default"].math.geom.d2r(deg);
@@ -626,6 +629,7 @@
           o.ty = o.y + distance * Math.sin(deg);
         }
 
+        o.deg = deg;
         o.dx = o.tx - o.x;
         o.dy = o.ty - o.y;
         ['blink', 'fade', 'scale'].forEach(function (k) {
