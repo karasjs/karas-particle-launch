@@ -117,7 +117,7 @@
     };
   }
 
-  var version = "0.7.0";
+  var version = "0.7.1";
 
   var _karas$enums = karas__default["default"].enums,
       _karas$enums$STYLE_KE = _karas$enums.STYLE_KEY,
