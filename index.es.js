@@ -109,7 +109,7 @@ function _createSuper(Derived) {
   };
 }
 
-var version = "0.7.1";
+var version = "0.7.2";
 
 var _karas$enums = karas.enums,
     _karas$enums$STYLE_KE = _karas$enums.STYLE_KEY,
@@ -440,7 +440,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
             m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -item.width * 0.5, -item.height * 0.5, 0, 1]); // 保持方向角度于起点一致性，可以指定angle偏移
 
             if (!isNil(item.angle)) {
-              var r = d2r(item.deg) + d2r(item.angle);
+              var r = d2r(item.deg + item.angle);
               var t = identity();
               var sin = Math.sin(r);
               var cos = Math.cos(r);
@@ -609,29 +609,30 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
 
       o.distance = distance;
       o.direction = item.direction;
+      var deg2 = deg;
 
       if (deg >= 270) {
         deg = 360 - deg;
-        deg = karas.math.geom.d2r(deg);
+        deg = d2r(deg);
         o.tx = o.x + distance * Math.cos(deg);
         o.ty = o.y - distance * Math.sin(deg);
       } else if (deg >= 180) {
         deg = deg - 180;
-        deg = karas.math.geom.d2r(deg);
+        deg = d2r(deg);
         o.tx = o.x - distance * Math.cos(deg);
         o.ty = o.y - distance * Math.sin(deg);
       } else if (deg >= 90) {
         deg = 180 - deg;
-        deg = karas.math.geom.d2r(deg);
+        deg = d2r(deg);
         o.tx = o.x - distance * Math.cos(deg);
         o.ty = o.y + distance * Math.sin(deg);
       } else {
-        deg = karas.math.geom.d2r(deg);
+        deg = d2r(deg);
         o.tx = o.x + distance * Math.cos(deg);
         o.ty = o.y + distance * Math.sin(deg);
       }
 
-      o.deg = deg;
+      o.deg = deg2;
       o.dx = o.tx - o.x;
       o.dy = o.ty - o.y;
       ['blink', 'fade', 'scale'].forEach(function (k) {
