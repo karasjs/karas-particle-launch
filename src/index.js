@@ -112,13 +112,19 @@ class ParticleLaunch extends karas.Component {
             delete hashMatrix[item.id];
           }
           else if(item.source) {
-            let { x, y, dx, dy, time, duration, easing, blink, fade, scale } = item;
+            let { x, y, tx, ty, dx, dy, time, duration, easing, blink, fade, scale, direction } = item;
             let percent = time / duration;
             if(easing) {
               percent = easing(percent);
             }
-            item.nowX = x + dx * percent;
-            item.nowY = y + dy * percent;
+            if(direction === 'reverse') {
+              item.nowX = tx - dx * percent;
+              item.nowY = ty - dy * percent;
+            }
+            else {
+              item.nowX = x + dx * percent;
+              item.nowY = y + dy * percent;
+            }
             let opacity = 1;
             if(blink) {
               let num = Math.floor(time / blink.duration);
@@ -252,9 +258,9 @@ class ParticleLaunch extends karas.Component {
           }
           // 移动一半使得图形中心为计算位置的原点
           m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -item.width * 0.5, -item.height * 0.5, 0, 1])
-          // 保持方向角度于起点一致性，可以指定direction偏移
-          if(!isNil(item.direction)) {
-            let r = d2r(item.deg) + d2r(item.direction);
+          // 保持方向角度于起点一致性，可以指定angle偏移
+          if(!isNil(item.angle)) {
+            let r = d2r(item.deg) + d2r(item.angle);
             let t = identity();
             let sin = Math.sin(r);
             let cos = Math.cos(r);
@@ -394,12 +400,12 @@ class ParticleLaunch extends karas.Component {
       deg = item.deg;
     }
     o.deg = deg;
-    let direction = parseFloat(item.direction);
-    if(item.direction === true) {
-      direction = 0;
+    let angle = parseFloat(item.angle);
+    if(item.angle === true) {
+      angle = 0;
     }
-    if(!isNaN(direction)) {
-      o.direction = direction;
+    if(!isNaN(angle)) {
+      o.angle = angle;
     }
     let distance = 0;
     if(Array.isArray(item.distance)) {
@@ -409,6 +415,7 @@ class ParticleLaunch extends karas.Component {
       distance = item.distance * width;
     }
     o.distance = distance;
+    o.direction = item.direction;
     if(deg >= 270) {
       deg = 360 - deg;
       deg = karas.math.geom.d2r(deg);

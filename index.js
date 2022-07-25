@@ -117,7 +117,7 @@
     };
   }
 
-  var version = "0.6.4";
+  var version = "0.7.0";
 
   var _karas$enums = karas__default["default"].enums,
       _karas$enums$STYLE_KE = _karas$enums.STYLE_KEY,
@@ -249,6 +249,8 @@
               } else if (item.source) {
                 var x = item.x,
                     y = item.y,
+                    tx = item.tx,
+                    ty = item.ty,
                     dx = item.dx,
                     dy = item.dy,
                     time = item.time,
@@ -256,15 +258,22 @@
                     easing = item.easing,
                     blink = item.blink,
                     fade = item.fade,
-                    scale = item.scale;
+                    scale = item.scale,
+                    direction = item.direction;
                 var percent = time / duration;
 
                 if (easing) {
                   percent = easing(percent);
                 }
 
-                item.nowX = x + dx * percent;
-                item.nowY = y + dy * percent;
+                if (direction === 'reverse') {
+                  item.nowX = tx - dx * percent;
+                  item.nowY = ty - dy * percent;
+                } else {
+                  item.nowX = x + dx * percent;
+                  item.nowY = y + dy * percent;
+                }
+
                 var opacity = 1;
 
                 if (blink) {
@@ -436,10 +445,10 @@
               } // 移动一半使得图形中心为计算位置的原点
 
 
-              m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -item.width * 0.5, -item.height * 0.5, 0, 1]); // 保持方向角度于起点一致性，可以指定direction偏移
+              m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -item.width * 0.5, -item.height * 0.5, 0, 1]); // 保持方向角度于起点一致性，可以指定angle偏移
 
-              if (!isNil(item.direction)) {
-                var r = d2r(item.deg) + d2r(item.direction);
+              if (!isNil(item.angle)) {
+                var r = d2r(item.deg) + d2r(item.angle);
                 var t = identity();
                 var sin = Math.sin(r);
                 var cos = Math.cos(r);
@@ -588,14 +597,14 @@
         }
 
         o.deg = deg;
-        var direction = parseFloat(item.direction);
+        var angle = parseFloat(item.angle);
 
-        if (item.direction === true) {
-          direction = 0;
+        if (item.angle === true) {
+          angle = 0;
         }
 
-        if (!isNaN(direction)) {
-          o.direction = direction;
+        if (!isNaN(angle)) {
+          o.angle = angle;
         }
 
         var distance = 0;
@@ -607,6 +616,7 @@
         }
 
         o.distance = distance;
+        o.direction = item.direction;
 
         if (deg >= 270) {
           deg = 360 - deg;

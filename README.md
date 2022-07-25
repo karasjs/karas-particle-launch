@@ -29,11 +29,12 @@ karas.render(
                       y: 0.5,
                       distance: [0.2, 1.2],
                       deg: [0, 360],
-                      direction: 10, // 是否跟随角度旋转，值是对原本图片的偏移量，可以为0
+                      angle: 10, // 是否跟随角度旋转，值是对原本图片的偏移量，可以为0
                       width: 5, // width和height只传1个的话意为保持宽高比
                       height: 5,
                       easing: 'ease-out',
                       duration: 2000, // 时长
+                      direction: 'reverse', // 反向
                       blink: { // 是否闪烁
                         from: [0.6, 0.8],
                         to: [0.2, 0.4],
