@@ -9,6 +9,9 @@ export default [{
     file: 'index.es.js',
     format: 'es',
     sourcemap: true,
+    globals: {
+      karas: 'karas',
+    },
   },
   plugins: [
     babel({
@@ -24,6 +27,9 @@ export default [{
     file: 'index.js',
     format: 'umd',
     sourcemap: true,
+    globals: {
+      karas: 'karas',
+    },
   },
   plugins: [
     babel({
@@ -39,6 +45,9 @@ export default [{
     file: 'index.es.js',
     format: 'es',
     sourcemap: true,
+    globals: {
+      karas: 'karas',
+    },
   },
   plugins: [
     babel({
@@ -54,6 +63,9 @@ export default [{
     file: 'index.min.js',
     format: 'umd',
     sourcemap: true,
+    globals: {
+      karas: 'karas',
+    },
   },
   plugins: [
     babel({

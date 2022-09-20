@@ -8,15 +8,11 @@ const {
       VISIBILITY,
       OPACITY,
     },
-    NODE_KEY: {
-      NODE_REFRESH_LV,
-    },
   },
   refresh: {
     level: {
       REPAINT,
     },
-    Cache,
   },
   util: {
     isNil,
@@ -80,6 +76,7 @@ class ParticleLaunch extends karas.Component {
     let hashTfo = this.hashTfo = {};
     let currentTime = 0, maxTime = 0;
     let hasStart;
+    let self = this;
     let cb = this.cb = diff => {
       diff *= this.playbackRate;
       currentTime += diff;
@@ -184,14 +181,11 @@ class ParticleLaunch extends karas.Component {
         }
         // 开始后每次都刷新，即便数据已空，要变成空白初始状态
         if(hasStart) {
-          fake.clearCache();
-          let p = fake.domParent;
-          while (p) {
-            p.clearCache(true);
-            p = p.domParent;
-          }
-          root.addForceRefreshTask(() => {
-            this.emit('frame');
+          root.__addUpdate(fake, {
+            focus: REPAINT,
+            cb() {
+              self.emit('frame');
+            },
           });
         }
         if(count >= this.num) {
@@ -220,16 +214,13 @@ class ParticleLaunch extends karas.Component {
     if(autoPlay !== false) {
       fake.frameAnimate(cb);
     }
-    let __config = fake.__config;
-    __config[NODE_REFRESH_LV] |= REPAINT;
     let shadowRoot = this.shadowRoot;
     let texCache = this.root.texCache;
-    fake.render = (renderMode, lv, ctx, cache, dx = 0, dy = 0) => {
+    fake.render = (renderMode, ctx, dx = 0, dy = 0) => {
       let time = currentTime - delay;
       if(time < 0) {
         return;
       }
-      __config[NODE_REFRESH_LV] |= REPAINT;
       let computedStyle = shadowRoot.computedStyle;
       if(computedStyle[DISPLAY] === 'none'
         || computedStyle[VISIBILITY] === 'hidden'
@@ -276,40 +267,40 @@ class ParticleLaunch extends karas.Component {
           }
           if(renderMode === WEBGL) {
             // webgl特殊记录，其tfo如果在局部缓存下偏移量要特殊计算，canvas无感知
-            hashTfo[item.id] = tfo;
-            let cache = hashCache[item.id];
-            if(!cache) {
-              let url = item.url;
-              if(!hashImg[url]) {
-                cache = hashCache[item.id] = Cache.getInstance(
-                  [x - 1, y - 1, x + item.sourceWidth + 1, y + item.sourceHeight + 1],
-                  x, y
-                );
-                cache.ctx.drawImage(item.source, x + cache.dx, y + cache.dy)
-                hashImg[url] = cache;
-              }
-              else {
-                let c = hashImg[url];
-                cache = hashCache[item.id] = new karas.refresh.Cache(
-                  c.width, c.height,
-                  [x - 1, y - 1, x + item.sourceWidth + 1, y + item.sourceHeight + 1],
-                  c.page, c.pos, x, y
-                );
-              }
-            }
-            else {
-              cache.__bbox = [x - 1, y - 1, x + item.sourceWidth + 1, y + item.sourceHeight + 1];
-              cache.__sx = x;
-              cache.__sy = y;
-            }
-            if(item.width !== item.sourceWidth && item.height !== item.sourceHeight) {
-              let t2 = identity();
-              t2[0] = item.width / item.sourceWidth;
-              t2[5] = item.height / item.sourceHeight;
-              m = multiply(m, t2);
-            }
-            hashMatrix[item.id] = m;
-            hashOpacity[item.id] = opacity;
+            // hashTfo[item.id] = tfo;
+            // let cache = hashCache[item.id];
+            // if(!cache) {
+            //   let url = item.url;
+            //   if(!hashImg[url]) {
+            //     cache = hashCache[item.id] = Cache.getInstance(
+            //       [x - 1, y - 1, x + item.sourceWidth + 1, y + item.sourceHeight + 1],
+            //       x, y
+            //     );
+            //     cache.ctx.drawImage(item.source, x + cache.dx, y + cache.dy)
+            //     hashImg[url] = cache;
+            //   }
+            //   else {
+            //     let c = hashImg[url];
+            //     cache = hashCache[item.id] = new karas.refresh.Cache(
+            //       c.width, c.height,
+            //       [x - 1, y - 1, x + item.sourceWidth + 1, y + item.sourceHeight + 1],
+            //       c.page, c.pos, x, y
+            //     );
+            //   }
+            // }
+            // else {
+            //   cache.__bbox = [x - 1, y - 1, x + item.sourceWidth + 1, y + item.sourceHeight + 1];
+            //   cache.__sx = x;
+            //   cache.__sy = y;
+            // }
+            // if(item.width !== item.sourceWidth && item.height !== item.sourceHeight) {
+            //   let t2 = identity();
+            //   t2[0] = item.width / item.sourceWidth;
+            //   t2[5] = item.height / item.sourceHeight;
+            //   m = multiply(m, t2);
+            // }
+            // hashMatrix[item.id] = m;
+            // hashOpacity[item.id] = opacity;
           }
           else if(renderMode === CANVAS) {
             ctx.globalAlpha = opacity;
@@ -329,30 +320,30 @@ class ParticleLaunch extends karas.Component {
         ctx.globalAlpha = globalAlpha;
       }
     };
-    fake.hookGlRender = function(gl, opacity, matrix, cx, cy, dx, dy, revertY) {
-      let computedStyle = shadowRoot.computedStyle;
-      if(computedStyle[DISPLAY] === 'none'
-        || computedStyle[VISIBILITY] === 'hidden'
-        || computedStyle[OPACITY] <= 0) {
-        return;
-      }
-      dataList.forEach(item => {
-        if(item.loaded) {
-          let id = item.id;
-          let tfo = hashTfo[id].slice(0);
-          tfo[0] += dx;
-          tfo[1] += dy;
-          let m = hashMatrix[id];
-          m = multiply([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tfo[0], tfo[1], 0, 1], m);
-          m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -tfo[0], -tfo[1], 0, 1]);
-          // 父级的m
-          if(matrix) {
-            m = multiply(matrix, m);
-          }
-          texCache.addTexAndDrawWhenLimit(gl, hashCache[id], hashOpacity[id], m, cx, cy, dx, dy, revertY);
-        }
-      });
-    };
+    // fake.hookGlRender = function(gl, opacity, matrix, cx, cy, dx, dy, revertY) {
+    //   let computedStyle = shadowRoot.computedStyle;
+    //   if(computedStyle[DISPLAY] === 'none'
+    //     || computedStyle[VISIBILITY] === 'hidden'
+    //     || computedStyle[OPACITY] <= 0) {
+    //     return;
+    //   }
+    //   dataList.forEach(item => {
+    //     if(item.loaded) {
+    //       let id = item.id;
+    //       let tfo = hashTfo[id].slice(0);
+    //       tfo[0] += dx;
+    //       tfo[1] += dy;
+    //       let m = hashMatrix[id];
+    //       m = multiply([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tfo[0], tfo[1], 0, 1], m);
+    //       m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -tfo[0], -tfo[1], 0, 1]);
+    //       // 父级的m
+    //       if(matrix) {
+    //         m = multiply(matrix, m);
+    //       }
+    //       texCache.addTexAndDrawWhenLimit(gl, hashCache[id], hashOpacity[id], m, cx, cy, dx, dy, revertY);
+    //     }
+    //   });
+    // };
   }
 
   genItem(item) {

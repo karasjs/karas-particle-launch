@@ -8,12 +8,6 @@
 
   var karas__default = /*#__PURE__*/_interopDefaultLegacy(karas);
 
-  function _classCallCheck(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
   function _defineProperties(target, props) {
     for (var i = 0; i < props.length; i++) {
       var descriptor = props[i];
@@ -51,13 +45,6 @@
     if (superClass) _setPrototypeOf(subClass, superClass);
   }
 
-  function _getPrototypeOf(o) {
-    _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) {
-      return o.__proto__ || Object.getPrototypeOf(o);
-    };
-    return _getPrototypeOf(o);
-  }
-
   function _setPrototypeOf(o, p) {
     _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) {
       o.__proto__ = p;
@@ -67,67 +54,13 @@
     return _setPrototypeOf(o, p);
   }
 
-  function _isNativeReflectConstruct() {
-    if (typeof Reflect === "undefined" || !Reflect.construct) return false;
-    if (Reflect.construct.sham) return false;
-    if (typeof Proxy === "function") return true;
+  var version = "0.8.0";
 
-    try {
-      Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function () {}));
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function _assertThisInitialized(self) {
-    if (self === void 0) {
-      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-    }
-
-    return self;
-  }
-
-  function _possibleConstructorReturn(self, call) {
-    if (call && (typeof call === "object" || typeof call === "function")) {
-      return call;
-    } else if (call !== void 0) {
-      throw new TypeError("Derived constructors may only return object or undefined");
-    }
-
-    return _assertThisInitialized(self);
-  }
-
-  function _createSuper(Derived) {
-    var hasNativeReflectConstruct = _isNativeReflectConstruct();
-
-    return function _createSuperInternal() {
-      var Super = _getPrototypeOf(Derived),
-          result;
-
-      if (hasNativeReflectConstruct) {
-        var NewTarget = _getPrototypeOf(this).constructor;
-
-        result = Reflect.construct(Super, arguments, NewTarget);
-      } else {
-        result = Super.apply(this, arguments);
-      }
-
-      return _possibleConstructorReturn(this, result);
-    };
-  }
-
-  var version = "0.7.2";
-
-  var _karas$enums = karas__default["default"].enums,
-      _karas$enums$STYLE_KE = _karas$enums.STYLE_KEY,
+  var _karas$enums$STYLE_KE = karas__default["default"].enums.STYLE_KEY,
       DISPLAY = _karas$enums$STYLE_KE.DISPLAY,
       VISIBILITY = _karas$enums$STYLE_KE.VISIBILITY,
       OPACITY = _karas$enums$STYLE_KE.OPACITY,
-      NODE_REFRESH_LV = _karas$enums.NODE_KEY.NODE_REFRESH_LV,
-      _karas$refresh = karas__default["default"].refresh,
-      REPAINT = _karas$refresh.level.REPAINT,
-      Cache = _karas$refresh.Cache,
+      REPAINT = karas__default["default"].refresh.level.REPAINT,
       _karas$util = karas__default["default"].util,
       isNil = _karas$util.isNil,
       isFunction = _karas$util.isFunction,
@@ -144,14 +77,10 @@
   var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
     _inherits(ParticleLaunch, _karas$Component);
 
-    var _super = _createSuper(ParticleLaunch);
-
     function ParticleLaunch(props) {
       var _this;
 
-      _classCallCheck(this, ParticleLaunch);
-
-      _this = _super.call(this, props);
+      _this = _karas$Component.call(this, props) || this;
       _this.count = 0;
       _this.time = 0;
       _this.playbackRate = props.playbackRate || 1;
@@ -202,12 +131,13 @@
         var root = this.root;
         var hashCache = this.hashCache = {};
         var hashMatrix = this.hashMatrix = {};
-        var hashImg = this.hashImg = {};
-        var hashOpacity = this.hashOpacity = {};
-        var hashTfo = this.hashTfo = {};
+        this.hashImg = {};
+        this.hashOpacity = {};
+        this.hashTfo = {};
         var currentTime = 0,
             maxTime = 0;
         var hasStart;
+        var self = this;
 
         var cb = this.cb = function (diff) {
           diff *= _this3.playbackRate;
@@ -351,17 +281,11 @@
 
 
             if (hasStart) {
-              fake.clearCache();
-              var _p2 = fake.domParent;
-
-              while (_p2) {
-                _p2.clearCache(true);
-
-                _p2 = _p2.domParent;
-              }
-
-              root.addForceRefreshTask(function () {
-                _this3.emit('frame');
+              root.__addUpdate(fake, {
+                focus: REPAINT,
+                cb: function cb() {
+                  self.emit('frame');
+                }
               });
             }
 
@@ -399,21 +323,18 @@
           fake.frameAnimate(cb);
         }
 
-        var __config = fake.__config;
-        __config[NODE_REFRESH_LV] |= REPAINT;
         var shadowRoot = this.shadowRoot;
-        var texCache = this.root.texCache;
+        this.root.texCache;
 
-        fake.render = function (renderMode, lv, ctx, cache) {
-          var dx = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : 0;
-          var dy = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : 0;
+        fake.render = function (renderMode, ctx) {
+          var dx = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
+          var dy = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 0;
           var time = currentTime - delay;
 
           if (time < 0) {
             return;
           }
 
-          __config[NODE_REFRESH_LV] |= REPAINT;
           var computedStyle = shadowRoot.computedStyle;
 
           if (computedStyle[DISPLAY] === 'none' || computedStyle[VISIBILITY] === 'hidden' || computedStyle[OPACITY] <= 0) {
@@ -465,40 +386,7 @@
                 m = multiply(m, _t);
               }
 
-              if (renderMode === WEBGL) {
-                // webgl特殊记录，其tfo如果在局部缓存下偏移量要特殊计算，canvas无感知
-                hashTfo[item.id] = tfo;
-                var _cache = hashCache[item.id];
-
-                if (!_cache) {
-                  var url = item.url;
-
-                  if (!hashImg[url]) {
-                    _cache = hashCache[item.id] = Cache.getInstance([x - 1, y - 1, x + item.sourceWidth + 1, y + item.sourceHeight + 1], x, y);
-
-                    _cache.ctx.drawImage(item.source, x + _cache.dx, y + _cache.dy);
-
-                    hashImg[url] = _cache;
-                  } else {
-                    var c = hashImg[url];
-                    _cache = hashCache[item.id] = new karas__default["default"].refresh.Cache(c.width, c.height, [x - 1, y - 1, x + item.sourceWidth + 1, y + item.sourceHeight + 1], c.page, c.pos, x, y);
-                  }
-                } else {
-                  _cache.__bbox = [x - 1, y - 1, x + item.sourceWidth + 1, y + item.sourceHeight + 1];
-                  _cache.__sx = x;
-                  _cache.__sy = y;
-                }
-
-                if (item.width !== item.sourceWidth && item.height !== item.sourceHeight) {
-                  var t2 = identity();
-                  t2[0] = item.width / item.sourceWidth;
-                  t2[5] = item.height / item.sourceHeight;
-                  m = multiply(m, t2);
-                }
-
-                hashMatrix[item.id] = m;
-                hashOpacity[item.id] = opacity;
-              } else if (renderMode === CANVAS) {
+              if (renderMode === WEBGL) ; else if (renderMode === CANVAS) {
                 ctx.globalAlpha = opacity; // canvas处理方式不一样，render的dx和dy包含了total的偏移计算考虑，可以无感知
 
                 m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -tfo[0], -tfo[1], 0, 1]); // 父级的m
@@ -518,33 +406,31 @@
           if (renderMode === CANVAS) {
             ctx.globalAlpha = globalAlpha;
           }
-        };
+        }; // fake.hookGlRender = function(gl, opacity, matrix, cx, cy, dx, dy, revertY) {
+        //   let computedStyle = shadowRoot.computedStyle;
+        //   if(computedStyle[DISPLAY] === 'none'
+        //     || computedStyle[VISIBILITY] === 'hidden'
+        //     || computedStyle[OPACITY] <= 0) {
+        //     return;
+        //   }
+        //   dataList.forEach(item => {
+        //     if(item.loaded) {
+        //       let id = item.id;
+        //       let tfo = hashTfo[id].slice(0);
+        //       tfo[0] += dx;
+        //       tfo[1] += dy;
+        //       let m = hashMatrix[id];
+        //       m = multiply([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tfo[0], tfo[1], 0, 1], m);
+        //       m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -tfo[0], -tfo[1], 0, 1]);
+        //       // 父级的m
+        //       if(matrix) {
+        //         m = multiply(matrix, m);
+        //       }
+        //       texCache.addTexAndDrawWhenLimit(gl, hashCache[id], hashOpacity[id], m, cx, cy, dx, dy, revertY);
+        //     }
+        //   });
+        // };
 
-        fake.hookGlRender = function (gl, opacity, matrix, cx, cy, dx, dy, revertY) {
-          var computedStyle = shadowRoot.computedStyle;
-
-          if (computedStyle[DISPLAY] === 'none' || computedStyle[VISIBILITY] === 'hidden' || computedStyle[OPACITY] <= 0) {
-            return;
-          }
-
-          dataList.forEach(function (item) {
-            if (item.loaded) {
-              var id = item.id;
-              var tfo = hashTfo[id].slice(0);
-              tfo[0] += dx;
-              tfo[1] += dy;
-              var m = hashMatrix[id];
-              m = multiply([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tfo[0], tfo[1], 0, 1], m);
-              m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -tfo[0], -tfo[1], 0, 1]); // 父级的m
-
-              if (matrix) {
-                m = multiply(matrix, m);
-              }
-
-              texCache.addTexAndDrawWhenLimit(gl, hashCache[id], hashOpacity[id], m, cx, cy, dx, dy, revertY);
-            }
-          });
-        };
       }
     }, {
       key: "genItem",
