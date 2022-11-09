@@ -91,7 +91,7 @@
     return _get.apply(this, arguments);
   }
 
-  var version = "0.8.0";
+  var version = "0.8.1";
 
   var _karas$enums$STYLE_KE = karas__default["default"].enums.STYLE_KEY,
       DISPLAY = _karas$enums$STYLE_KE.DISPLAY,
