@@ -33,6 +33,79 @@ const {
   },
 } = karas;
 
+class $ extends karas.Geom {
+  calContent(currentStyle, computedStyle) {
+    let res = super.calContent(currentStyle, computedStyle);
+    if(res) {
+      return res;
+    }
+    return this.dataList && this.dataList.length;
+  }
+  render(renderMode, ctx, dx, dy) {
+    let res = super.render(renderMode, ctx, dx, dy);
+    let dataList = this.dataList;
+    if(!dataList || !dataList.length) {
+      return res;
+    }
+    let { __x1: x1, __y1: y1, __cache } = this;
+    let globalAlpha = 1;
+    if(renderMode === CANVAS) {
+      globalAlpha = ctx.globalAlpha;
+    }
+    dataList.forEach(item => {
+      if(item.loaded) {
+        let opacity = globalAlpha;
+        opacity *= item.opacity;
+        // 计算位置
+        let x = item.nowX + x1 + dx;
+        let y = item.nowY + y1 + dy;
+        let m = identity();
+        let tfo = [x + item.width * 0.5, y + item.height * 0.5];
+        if(renderMode === CANVAS) {
+          m = multiply([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tfo[0], tfo[1], 0, 1], m);
+        }
+        // 移动一半使得图形中心为计算位置的原点
+        m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -item.width * 0.5, -item.height * 0.5, 0, 1])
+        // 保持方向角度于起点一致性，可以指定angle偏移
+        if(!isNil(item.angle)) {
+          let r = d2r(item.deg + item.angle);
+          let t = identity();
+          let sin = Math.sin(r);
+          let cos = Math.cos(r);
+          t[0] = t[5] = cos;
+          t[1] = sin;
+          t[4] = -sin;
+          m = multiply(m, t);
+        }
+        if(item.sc && item.sc !== 1) {
+          let t = identity();
+          t[0] = t[5] = t[10] = item.sc;
+          m = multiply(m, t);
+        }
+        if(renderMode === CANVAS) {
+          ctx.globalAlpha = opacity;
+          // canvas处理方式不一样，render的dx和dy包含了total的偏移计算考虑，可以无感知
+          m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -tfo[0], -tfo[1], 0, 1]);
+          // 父级的m，webgl时有cache不应该包含，暂时解决
+          if(__cache && __cache.available) {
+          }
+          else {
+            let pm = this.matrixEvent;
+            if(pm) {
+              m = multiply(pm, m);
+            }
+          }
+          ctx.setTransform(m[0], m[1], m[4], m[5], m[12], m[13]);
+          ctx.drawImage(item.source, x, y, item.width, item.height);
+        }
+      }
+    });
+    if(renderMode === CANVAS) {
+      ctx.globalAlpha = globalAlpha;
+    }
+  }
+}
+
 let uuid = 0;
 
 class ParticleLaunch extends karas.Component {
@@ -57,27 +130,22 @@ class ParticleLaunch extends karas.Component {
     this.hashCache = {};
     this.hashMatrix = {};
     this.hashImg = {};
-    this.hashOpacity = {};
-    this.hashTfo = {};
   }
 
   componentDidMount() {
-    let { props } = this;
+    let { props, shadowRoot: { computedStyle } } = this;
     let { list = [], initNum = 0, delay = 0, autoPlay } = props;
     let dataList = [];
     let i = 0, length = list.length;
     let lastTime = 0, count = 0;
     let fake = this.ref.fake;
-    let root = this.root;
     let hashCache = this.hashCache = {};
     let hashMatrix = this.hashMatrix = {};
-    let hashImg = this.hashImg = {};
-    let hashOpacity = this.hashOpacity = {};
-    let hashTfo = this.hashTfo = {};
     let currentTime = 0, maxTime = 0;
     let hasStart;
     let self = this;
     let cb = this.cb = diff => {
+      fake.dataList = null;
       diff *= this.playbackRate;
       currentTime += diff;
       if(delay > 0) {
@@ -180,22 +248,20 @@ class ParticleLaunch extends karas.Component {
           }
         }
         // 开始后每次都刷新，即便数据已空，要变成空白初始状态
-        if(hasStart) {
-          root.__addUpdate(fake, {
-            focus: REPAINT,
-            cb() {
-              self.emit('frame');
-            },
-          });
-        }
-        if(count >= this.num) {
-          if(currentTime >= maxTime) {
-            fake.removeFrameAnimate(cb);
+        if(hasStart && currentTime >= delay) {
+          if(computedStyle[DISPLAY] !== 'none' && computedStyle[VISIBILITY] !== 'hidden' && computedStyle[OPACITY] > 0) {
+            fake.dataList = dataList;
+            fake.refresh(REPAINT);
+            self.emit('frame');
           }
+        }
+        // 数量完了动画也执行完了停止
+        if(count >= this.num && currentTime >= maxTime) {
+          fake.removeFrameAnimate(cb);
           return;
         }
         // 每隔interval开始生成这一阶段的粒子数据
-        if(this.time >= lastTime + this.interval) {
+        if(this.time >= lastTime + this.interval && count < this.num) {
           lastTime = this.time;
           for(let j = 0; j < this.intervalNum; j++) {
             i++;
@@ -214,140 +280,10 @@ class ParticleLaunch extends karas.Component {
     if(autoPlay !== false) {
       fake.frameAnimate(cb);
     }
-    let shadowRoot = this.shadowRoot;
-    let texCache = this.root.texCache;
-    fake.render = (renderMode, ctx, dx = 0, dy = 0) => {
-      let time = currentTime - delay;
-      if(time < 0) {
-        return;
-      }
-      let computedStyle = shadowRoot.computedStyle;
-      if(computedStyle[DISPLAY] === 'none'
-        || computedStyle[VISIBILITY] === 'hidden'
-        || computedStyle[OPACITY] <= 0) {
-        return;
-      }
-      let { sx, sy } = fake;
-      let globalAlpha;
-      if(renderMode === CANVAS) {
-        globalAlpha = ctx.globalAlpha;
-      }
-      else if(renderMode === WEBGL) {
-        globalAlpha = computedStyle[OPACITY];
-      }
-      dataList.forEach(item => {
-        if(item.loaded) {
-          let opacity = globalAlpha;
-          opacity *= item.opacity;
-          // 计算位置
-          let x = item.nowX + sx + dx;
-          let y = item.nowY + sy + dy;
-          let m = identity();
-          let tfo = [x + item.width * 0.5, y + item.height * 0.5];
-          if(renderMode === CANVAS) {
-            m = multiply([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tfo[0], tfo[1], 0, 1], m);
-          }
-          // 移动一半使得图形中心为计算位置的原点
-          m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -item.width * 0.5, -item.height * 0.5, 0, 1])
-          // 保持方向角度于起点一致性，可以指定angle偏移
-          if(!isNil(item.angle)) {
-            let r = d2r(item.deg + item.angle);
-            let t = identity();
-            let sin = Math.sin(r);
-            let cos = Math.cos(r);
-            t[0] = t[5] = cos;
-            t[1] = sin;
-            t[4] = -sin;
-            m = multiply(m, t);
-          }
-          if(item.sc && item.sc !== 1) {
-            let t = identity();
-            t[0] = t[5] = t[10] = item.sc;
-            m = multiply(m, t);
-          }
-          if(renderMode === WEBGL) {
-            // webgl特殊记录，其tfo如果在局部缓存下偏移量要特殊计算，canvas无感知
-            // hashTfo[item.id] = tfo;
-            // let cache = hashCache[item.id];
-            // if(!cache) {
-            //   let url = item.url;
-            //   if(!hashImg[url]) {
-            //     cache = hashCache[item.id] = Cache.getInstance(
-            //       [x - 1, y - 1, x + item.sourceWidth + 1, y + item.sourceHeight + 1],
-            //       x, y
-            //     );
-            //     cache.ctx.drawImage(item.source, x + cache.dx, y + cache.dy)
-            //     hashImg[url] = cache;
-            //   }
-            //   else {
-            //     let c = hashImg[url];
-            //     cache = hashCache[item.id] = new karas.refresh.Cache(
-            //       c.width, c.height,
-            //       [x - 1, y - 1, x + item.sourceWidth + 1, y + item.sourceHeight + 1],
-            //       c.page, c.pos, x, y
-            //     );
-            //   }
-            // }
-            // else {
-            //   cache.__bbox = [x - 1, y - 1, x + item.sourceWidth + 1, y + item.sourceHeight + 1];
-            //   cache.__sx = x;
-            //   cache.__sy = y;
-            // }
-            // if(item.width !== item.sourceWidth && item.height !== item.sourceHeight) {
-            //   let t2 = identity();
-            //   t2[0] = item.width / item.sourceWidth;
-            //   t2[5] = item.height / item.sourceHeight;
-            //   m = multiply(m, t2);
-            // }
-            // hashMatrix[item.id] = m;
-            // hashOpacity[item.id] = opacity;
-          }
-          else if(renderMode === CANVAS) {
-            ctx.globalAlpha = opacity;
-            // canvas处理方式不一样，render的dx和dy包含了total的偏移计算考虑，可以无感知
-            m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -tfo[0], -tfo[1], 0, 1]);
-            // 父级的m
-            let pm = this.matrixEvent;
-            if(pm) {
-              m = multiply(pm, m);
-            }
-            ctx.setTransform(m[0], m[1], m[4], m[5], m[12], m[13]);
-            ctx.drawImage(item.source, x, y, item.width, item.height);
-          }
-        }
-      });
-      if(renderMode === CANVAS) {
-        ctx.globalAlpha = globalAlpha;
-      }
-    };
-    // fake.hookGlRender = function(gl, opacity, matrix, cx, cy, dx, dy, revertY) {
-    //   let computedStyle = shadowRoot.computedStyle;
-    //   if(computedStyle[DISPLAY] === 'none'
-    //     || computedStyle[VISIBILITY] === 'hidden'
-    //     || computedStyle[OPACITY] <= 0) {
-    //     return;
-    //   }
-    //   dataList.forEach(item => {
-    //     if(item.loaded) {
-    //       let id = item.id;
-    //       let tfo = hashTfo[id].slice(0);
-    //       tfo[0] += dx;
-    //       tfo[1] += dy;
-    //       let m = hashMatrix[id];
-    //       m = multiply([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tfo[0], tfo[1], 0, 1], m);
-    //       m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -tfo[0], -tfo[1], 0, 1]);
-    //       // 父级的m
-    //       if(matrix) {
-    //         m = multiply(matrix, m);
-    //       }
-    //       texCache.addTexAndDrawWhenLimit(gl, hashCache[id], hashOpacity[id], m, cx, cy, dx, dy, revertY);
-    //     }
-    //   });
-    // };
   }
 
   genItem(item) {
-    let { width, height, props } = this;
+    let { width, height } = this;
     let o = {
       id: uuid++,
       time: 0,
@@ -478,9 +414,6 @@ class ParticleLaunch extends karas.Component {
         }
       });
     }
-    if(props.hookData && isFunction(props.hookData)) {
-      o = props.hookData(o);
-    }
     return o;
   }
 
@@ -538,7 +471,10 @@ class ParticleLaunch extends karas.Component {
 
   render() {
     return <div cacheAsBitmap={this.props.cacheAsBitmap}>
-      <$polyline ref="fake" style={{width:0,height:0,visibility:'hidden'}}/>
+      <$ ref="fake" style={{
+        width: '100%',
+        height: '100%',
+      }}/>
     </div>;
   }
 }
