@@ -6,17 +6,24 @@ const {
     STYLE_KEY: {
       DISPLAY,
       VISIBILITY,
+      TRANSLATE_X,
+      TRANSLATE_Y,
       OPACITY,
+      SCALE_X,
+      SCALE_Y,
+      ROTATE_Z,
     },
   },
   refresh: {
     level: {
       REPAINT,
     },
+    webgl: {
+      drawTextureCache,
+    },
   },
   util: {
     isNil,
-    isFunction,
   },
   math: {
     geom: {
@@ -24,13 +31,25 @@ const {
     },
     matrix: {
       identity,
-      multiply,
+      multiplyTfo,
+      tfoMultiply,
+      multiplyTranslateX,
+      multiplyTranslateY,
+      multiplyRotateZ,
+      multiplyScaleX,
+      multiplyScaleY,
     },
   },
   mode: {
     CANVAS,
     WEBGL,
   },
+  style: {
+    css,
+  },
+  animate,
+  Img,
+  inject,
 } = karas;
 
 class $ extends karas.Geom {
@@ -47,61 +66,123 @@ class $ extends karas.Geom {
     if(!dataList || !dataList.length) {
       return res;
     }
-    let { __x1: x1, __y1: y1, __cache } = this;
-    let globalAlpha = 1;
-    if(renderMode === CANVAS) {
-      globalAlpha = ctx.globalAlpha;
+    let root = this.__root;
+    if(renderMode !== root.renderMode) {
+      return res;
     }
+    let ani = this.ani, animation = this.animation, currentTime = this.currentTime;
+    if(ani) {
+      let i = animate.Animation.binarySearch(0, animation.length - 1, currentTime, animation);
+      let notSameFrame = this.lastFrameIndex !== i;
+      this.lastFrameIndex = i;
+      let frame = animation[i];
+      let total;
+      if(i >= animation.length - 1) {
+        total = animation[i].time;
+      }
+      else {
+        total = animation[i + 1].time - frame.time;
+      }
+      let percent = (currentTime - frame.time) / total;
+      animate.Animation.calIntermediateStyle(frame, percent, ani, notSameFrame);
+    }
+    let { __x1: x1, __y1: y1 } = this;
+    let globalAlpha = this.__computedStyle[OPACITY];
+    let cacheList = [], lastPage, cx = this.width * 0.5, cy = this.height * 0.5;
+    // console.warn(dataList)
     dataList.forEach(item => {
       if(item.loaded) {
-        let opacity = globalAlpha;
-        opacity *= item.opacity;
+        let opacity = globalAlpha * item.opacity;
         // 计算位置
         let x = item.nowX + x1 + dx;
         let y = item.nowY + y1 + dy;
         let m = identity();
-        let tfo = [x + item.width * 0.5, y + item.height * 0.5];
-        if(renderMode === CANVAS) {
-          m = multiply([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tfo[0], tfo[1], 0, 1], m);
-        }
+        let img = inject.IMG[item.url];
+        let tfo = [x + img.width * 0.5, y + img.height * 0.5];
+        m = tfoMultiply(tfo[0], tfo[1], m);
         // 移动一半使得图形中心为计算位置的原点
-        m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -item.width * 0.5, -item.height * 0.5, 0, 1])
+        m = multiplyTranslateX(m, -img.width * 0.5);
+        m = multiplyTranslateY(m, -img.height * 0.5);
+        // 如果有path，需要设置且保存当时的位置
+        if(ani) {
+          let cs;
+          if(item.hasOwnProperty('ani')) {
+            cs = item.ani;
+          }
+          else {
+            cs = item.ani = css.cloneStyle(ani.__currentStyle);
+          }
+          if(cs.hasOwnProperty(TRANSLATE_X)) {
+            let tx = cs[TRANSLATE_X].v;
+            m = multiplyTranslateX(m, tx);
+          }
+          if(cs.hasOwnProperty(TRANSLATE_Y)) {
+            let ty = cs[TRANSLATE_Y].v;
+            m = multiplyTranslateY(m, ty);
+          }
+          if(cs.hasOwnProperty(OPACITY)) {
+            opacity *= cs[OPACITY];
+          }
+          if(cs.hasOwnProperty(SCALE_X)) {
+            m = multiplyScaleX(m, cs[SCALE_X]);
+          }
+          if(cs.hasOwnProperty(SCALE_Y)) {
+            m = multiplyScaleY(m, cs[SCALE_Y]);
+          }
+          if(cs.hasOwnProperty(ROTATE_Z)) {
+            m = multiplyRotateZ(m, d2r(cs[ROTATE_Z]));
+          }
+        }
         // 保持方向角度于起点一致性，可以指定angle偏移
         if(!isNil(item.angle)) {
           let r = d2r(item.deg + item.angle);
-          let t = identity();
-          let sin = Math.sin(r);
-          let cos = Math.cos(r);
-          t[0] = t[5] = cos;
-          t[1] = sin;
-          t[4] = -sin;
-          m = multiply(m, t);
+          m = multiplyRotateZ(m, r);
         }
         if(item.sc && item.sc !== 1) {
-          let t = identity();
-          t[0] = t[5] = t[10] = item.sc;
-          m = multiply(m, t);
+          m = multiplyScaleX(m, item.sc);
+          m = multiplyScaleY(m, item.sc);
+        }
+        if(img.width !== item.width) {
+          m = multiplyScaleX(m, item.width / img.width);
+        }
+        if(img.height !== item.height) {
+          m = multiplyScaleY(m, item.height / img.height);
         }
         if(renderMode === CANVAS) {
+          m = multiplyTfo(m, -tfo[0], -tfo[1]);
           ctx.globalAlpha = opacity;
           // canvas处理方式不一样，render的dx和dy包含了total的偏移计算考虑，可以无感知
-          m = multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -tfo[0], -tfo[1], 0, 1]);
-          // 父级的m，webgl时有cache不应该包含，暂时解决
-          if(__cache && __cache.available) {
+          ctx.setTransform(m[0], m[1], m[4], m[5], m[12], m[13]);
+          ctx.drawImage(item.source, x, y);
+        }
+        else if(renderMode === WEBGL) {
+          let cache = item.cache;
+          if(!cache) {
+            item.cache = true;
+            Img.toWebglCache(ctx, root, item.url, function(res) {
+              item.cache = res;
+            });
           }
-          else {
-            let pm = this.matrixEvent;
-            if(pm) {
-              m = multiply(pm, m);
+          if(cache && cache !== true) {
+            m = multiplyTfo(m, -tfo[0], -tfo[1]);
+            if(!cache.available && cache.enabled) {
+              let { ctx, width, height, x, y } = cache;
+              ctx.drawImage(item.source, x, y, width, height);
+              cache.__available = true;
+            }
+            if(cache.available) {
+              if(lastPage && lastPage !== cache.__page) {
+                drawTextureCache(ctx, cacheList.splice(0), cx, cy, dx + x1, dy + y1);
+              }
+              lastPage = cache.__page;
+              cacheList.push({ cache, opacity, matrix: m });
             }
           }
-          ctx.setTransform(m[0], m[1], m[4], m[5], m[12], m[13]);
-          ctx.drawImage(item.source, x, y, item.width, item.height);
         }
       }
     });
-    if(renderMode === CANVAS) {
-      ctx.globalAlpha = globalAlpha;
+    if(renderMode === WEBGL) {
+      drawTextureCache(ctx, cacheList, cx, cy, dx + x1, dy + y1);
     }
   }
 }
@@ -119,35 +200,35 @@ class ParticleLaunch extends karas.Component {
     this.num = props.num || 0;
   }
 
-  shouldComponentUpdate() {
-    return false;
-  }
-
   componentWillUnmount() {
-    Object.keys(this.hashImg || {}).forEach(k => {
-      this.hashImg[k].release();
-    });
-    this.hashCache = {};
-    this.hashMatrix = {};
-    this.hashImg = {};
   }
 
   componentDidMount() {
-    let { props, shadowRoot: { computedStyle } } = this;
-    let { list = [], initNum = 0, delay = 0, autoPlay } = props;
+    let { props, shadowRoot: { computedStyle }, root: { renderMode } } = this;
+    let { list = [], initNum = 0, delay = 0, duration = 1000, easing, autoPlay, animation } = props;
     let dataList = [];
     let i = 0, length = list.length;
     let lastTime = 0, count = 0;
     let fake = this.ref.fake;
-    let hashCache = this.hashCache = {};
-    let hashMatrix = this.hashMatrix = {};
     let currentTime = 0, maxTime = 0;
     let hasStart;
-    let self = this;
+    // 分析path，类似waa
+    if(Array.isArray(animation) && animation.length > 1) {
+      let ani = {
+        __currentStyle: {},
+      };
+      let pathAni = animate.Animation.parse(animation, duration, easing, ani);
+      let keys = animate.Animation.unify(pathAni, ani);
+      animate.Animation.calTransition(pathAni, keys, ani);
+      fake.ani = ani;
+      fake.animation = pathAni;
+      fake.currentTime = 0;
+    }
     let cb = this.cb = diff => {
       fake.dataList = null;
       diff *= this.playbackRate;
       currentTime += diff;
+      fake.currentTime = currentTime;
       if(delay > 0) {
         delay -= diff;
       }
@@ -162,7 +243,7 @@ class ParticleLaunch extends karas.Component {
             i++;
             i %= length;
             count++;
-            let o = this.genItem(list[i]);
+            let o = this.genItem(list[i], duration);
             maxTime = Math.max(maxTime, currentTime + o.duration);
             dataList.push(o);
           }
@@ -172,9 +253,13 @@ class ParticleLaunch extends karas.Component {
           let item = dataList[j];
           item.time += diff;
           if(item.time >= item.duration) {
-            dataList.splice(j, 1);
-            delete hashCache[item.id];
-            delete hashMatrix[item.id];
+            let remove = dataList.splice(j, 1);
+            // webgl需释放纹理
+            if(renderMode === WEBGL && remove.length) {
+              remove.forEach(item => {
+                item.cache.release();
+              });
+            }
           }
           else if(item.source) {
             let { x, y, tx, ty, dx, dy, time, duration, easing, blink, fade, scale, direction } = item;
@@ -197,8 +282,8 @@ class ParticleLaunch extends karas.Component {
               let easing = blink.easing;
               let percent = (blink.to - blink.from) * diff / blink.duration;
               if(easing) {
-                let timeFunction = karas.animate.easing.getEasing(easing);
-                if(timeFunction !== karas.animate.easing.linear) {
+                let timeFunction = animate.easing.getEasing(easing);
+                if(timeFunction !== animate.easing.linear) {
                   percent = timeFunction(percent);
                 }
               }
@@ -216,8 +301,8 @@ class ParticleLaunch extends karas.Component {
               p = Math.min(1, p);
               let easing = fade.easing;
               if(easing) {
-                let timeFunction = karas.animate.easing.getEasing(easing);
-                if(timeFunction !== karas.animate.easing.linear) {
+                let timeFunction = animate.easing.getEasing(easing);
+                if(timeFunction !== animate.easing.linear) {
                   p = timeFunction(p);
                 }
               }
@@ -234,8 +319,8 @@ class ParticleLaunch extends karas.Component {
               p = Math.min(1, p);
               let easing = scale.easing;
               if(easing) {
-                let timeFunction = karas.animate.easing.getEasing(easing);
-                if(timeFunction !== karas.animate.easing.linear) {
+                let timeFunction = animate.easing.getEasing(easing);
+                if(timeFunction !== animate.easing.linear) {
                   p = timeFunction(p);
                 }
               }
@@ -252,7 +337,7 @@ class ParticleLaunch extends karas.Component {
           if(computedStyle[DISPLAY] !== 'none' && computedStyle[VISIBILITY] !== 'hidden' && computedStyle[OPACITY] > 0) {
             fake.dataList = dataList;
             fake.refresh(REPAINT);
-            self.emit('frame');
+            this.emit('frame');
           }
         }
         // 数量完了动画也执行完了停止
@@ -267,7 +352,7 @@ class ParticleLaunch extends karas.Component {
             i++;
             i %= length;
             count++;
-            let o = this.genItem(list[i]);
+            let o = this.genItem(list[i], duration);
             maxTime = Math.max(maxTime, currentTime + o.duration);
             dataList.push(o);
             if(count >= this.num) {
@@ -282,12 +367,13 @@ class ParticleLaunch extends karas.Component {
     }
   }
 
-  genItem(item) {
+  genItem(item, dur) {
     let { width, height } = this;
     let o = {
       id: uuid++,
       time: 0,
       url: item.url,
+      dur,
     };
     if(Array.isArray(item.x)) {
       o.x = (item.x[0] + Math.random() * (item.x[1] - item.x[0])) * width;
@@ -305,7 +391,7 @@ class ParticleLaunch extends karas.Component {
       o.duration = (item.duration[0] + Math.random() * (item.duration[1] - item.duration[0]));
     }
     else {
-      o.duration = item.duration;
+      o.duration = item.duration || dur;
     }
     if(Array.isArray(item.width)) {
       o.width = item.width[0] + Math.random() * (item.width[1] - item.width[0]);
@@ -391,10 +477,10 @@ class ParticleLaunch extends karas.Component {
       }
     });
     if(item.easing) {
-      o.easing = karas.animate.easing.getEasing(item.easing);
+      o.easing = animate.easing.getEasing(item.easing);
     }
     if(item.url) {
-      karas.inject.measureImg(item.url, function(res) {
+      inject.measureImg(item.url, function(res) {
         if(res.success) {
           o.source = res.source;
           o.sourceWidth = res.width;
@@ -470,10 +556,11 @@ class ParticleLaunch extends karas.Component {
   }
 
   render() {
-    return <div cacheAsBitmap={this.props.cacheAsBitmap}>
+    return <div cacheAsBitmap={true}>
       <$ ref="fake" style={{
         width: '100%',
         height: '100%',
+        background: '#F00',
       }}/>
     </div>;
   }
