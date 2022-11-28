@@ -337,12 +337,15 @@ class ParticleLaunch extends karas.Component {
           if(computedStyle[DISPLAY] !== 'none' && computedStyle[VISIBILITY] !== 'hidden' && computedStyle[OPACITY] > 0) {
             fake.dataList = dataList;
             fake.refresh(REPAINT);
+            this.props.onFrame?.();
             this.emit('frame');
           }
         }
         // 数量完了动画也执行完了停止
         if(count >= this.num && currentTime >= maxTime) {
           fake.removeFrameAnimate(cb);
+          this.props.onFinish?.();
+          this.emit('finish');
           return;
         }
         // 每隔interval开始生成这一阶段的粒子数据

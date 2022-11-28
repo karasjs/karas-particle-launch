@@ -91,7 +91,7 @@
     return _get.apply(this, arguments);
   }
 
-  var version = "0.8.1";
+  var version = "0.8.2";
 
   var _karas$enums$STYLE_KE = karas__default["default"].enums.STYLE_KEY,
       DISPLAY = _karas$enums$STYLE_KE.DISPLAY,
@@ -526,8 +526,11 @@
 
             if (hasStart && currentTime >= delay) {
               if (computedStyle[DISPLAY] !== 'none' && computedStyle[VISIBILITY] !== 'hidden' && computedStyle[OPACITY] > 0) {
+                var _this2$props$onFrame, _this2$props;
+
                 fake.dataList = dataList;
                 fake.refresh(REPAINT);
+                (_this2$props$onFrame = (_this2$props = _this2.props).onFrame) === null || _this2$props$onFrame === void 0 ? void 0 : _this2$props$onFrame.call(_this2$props);
 
                 _this2.emit('frame');
               }
@@ -535,7 +538,13 @@
 
 
             if (count >= _this2.num && currentTime >= maxTime) {
+              var _this2$props$onFinish, _this2$props2;
+
               fake.removeFrameAnimate(cb);
+              (_this2$props$onFinish = (_this2$props2 = _this2.props).onFinish) === null || _this2$props$onFinish === void 0 ? void 0 : _this2$props$onFinish.call(_this2$props2);
+
+              _this2.emit('finish');
+
               return;
             } // 每隔interval开始生成这一阶段的粒子数据
 

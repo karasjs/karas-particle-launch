@@ -61,10 +61,32 @@ karas.render(
                     delay={500} // 播放延迟
                     playbackRate={1} // 播放速率
                     autoPlay={false} // 自动播放，非false为自动
+                    duration={2000}
+                    animation={[
+                      {
+                        translatePath: [0, 0, 50, 100, 100, 0, 150, 50],
+                        opacity: 0.1,
+                      },
+                      {
+                        translatePath: [150, 50, 0, 100, 100, 200, 150, 150],
+                        opacity: 0.1,
+                      },
+                      {
+                        translateX: 150,
+                        translateY: 150,
+                        opacity: 0.1,
+                      },
+                    ]}
     />
   </canvas>
 );
 ```
+
+### props
+* onFrame 每帧触发
+* onFinish 播放完触发
+* animation 粒子整体动画，位移、缩放、选择、透明度可用
+* duration 上面选项的时间
 
 ### method
 * pause() 暂停
@@ -79,6 +101,7 @@ karas.render(
 
 ### event
 * frame 每次刷新后触发
+* finish 完成触发
 
 # License
 [MIT License]
