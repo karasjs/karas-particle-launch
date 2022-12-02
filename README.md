@@ -61,6 +61,7 @@ karas.render(
                     delay={500} // 播放延迟
                     playbackRate={1} // 播放速率
                     autoPlay={false} // 自动播放，非false为自动
+                    easing={'ease-out'}
                     duration={2000}
                     animation={[
                       {

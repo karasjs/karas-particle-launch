@@ -83,7 +83,7 @@ function _get() {
   return _get.apply(this, arguments);
 }
 
-var version = "0.8.2";
+var version = "0.8.3";
 
 var _karas$enums$STYLE_KE = karas.enums.STYLE_KEY,
     DISPLAY = _karas$enums$STYLE_KE.DISPLAY,
@@ -153,11 +153,13 @@ var $ = /*#__PURE__*/function (_karas$Geom) {
       }
 
       var ani = this.ani,
+          delay = this.delay,
           animation = this.animation,
           currentTime = this.currentTime;
 
-      if (ani) {
-        var i = animate.Animation.binarySearch(0, animation.length - 1, currentTime, animation);
+      if (ani && currentTime >= delay) {
+        var t = currentTime - delay;
+        var i = animate.Animation.binarySearch(0, animation.length - 1, t, animation);
         var notSameFrame = this.lastFrameIndex !== i;
         this.lastFrameIndex = i;
         var frame = animation[i];
@@ -169,8 +171,10 @@ var $ = /*#__PURE__*/function (_karas$Geom) {
           total = animation[i + 1].time - frame.time;
         }
 
-        var percent = (currentTime - frame.time) / total;
+        var percent = (t - frame.time) / total;
         animate.Animation.calIntermediateStyle(frame, percent, ani, notSameFrame);
+      } else {
+        ani = null;
       }
 
       var x1 = this.__x1,
@@ -322,6 +326,8 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
     _this.interval = props.interval || 300;
     _this.intervalNum = props.intervalNum || 1;
     _this.num = props.num || 0;
+    _this.__duration = props.duration || 1000;
+    _this.__easing = props.easing;
     return _this;
   }
 
@@ -367,6 +373,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
         fake.ani = ani;
         fake.animation = pathAni;
         fake.currentTime = 0;
+        fake.delay = delay;
       }
 
       var cb = this.cb = function (diff) {
@@ -449,7 +456,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
 
                 var _easing2 = blink.easing;
 
-                var _percent = (blink.to - blink.from) * _diff / blink.duration;
+                var _percent = _diff / blink.duration;
 
                 if (_easing2) {
                   var timeFunction = animate.easing.getEasing(_easing2);
@@ -461,9 +468,9 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
 
 
                 if (num % 2 === 0) {
-                  opacity *= blink.from + _percent;
+                  opacity *= blink.from + _percent * (blink.to - blink.from);
                 } else {
-                  opacity *= blink.to - _percent;
+                  opacity *= blink.to - _percent * (blink.to - blink.from);
                 }
               }
 
@@ -774,6 +781,16 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
       }
     }
   }, {
+    key: "duration",
+    get: function get() {
+      return this.__duration;
+    }
+  }, {
+    key: "easing",
+    get: function get() {
+      return this.__easing;
+    }
+  }, {
     key: "render",
     value: function render() {
       return karas.createElement("div", {
@@ -782,8 +799,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
         ref: "fake",
         style: {
           width: '100%',
-          height: '100%',
-          background: '#F00'
+          height: '100%'
         }
       }));
     }

@@ -70,9 +70,10 @@ class $ extends karas.Geom {
     if(renderMode !== root.renderMode) {
       return res;
     }
-    let ani = this.ani, animation = this.animation, currentTime = this.currentTime;
-    if(ani) {
-      let i = animate.Animation.binarySearch(0, animation.length - 1, currentTime, animation);
+    let ani = this.ani, delay = this.delay, animation = this.animation, currentTime = this.currentTime;
+    if(ani && currentTime >= delay) {
+      let t = currentTime - delay;
+      let i = animate.Animation.binarySearch(0, animation.length - 1, t, animation);
       let notSameFrame = this.lastFrameIndex !== i;
       this.lastFrameIndex = i;
       let frame = animation[i];
@@ -83,8 +84,11 @@ class $ extends karas.Geom {
       else {
         total = animation[i + 1].time - frame.time;
       }
-      let percent = (currentTime - frame.time) / total;
+      let percent = (t - frame.time) / total;
       animate.Animation.calIntermediateStyle(frame, percent, ani, notSameFrame);
+    }
+    else {
+      ani = null;
     }
     let { __x1: x1, __y1: y1 } = this;
     let globalAlpha = this.__computedStyle[OPACITY];
@@ -198,6 +202,8 @@ class ParticleLaunch extends karas.Component {
     this.interval = props.interval || 300;
     this.intervalNum = props.intervalNum || 1;
     this.num = props.num || 0;
+    this.__duration = props.duration || 1000;
+    this.__easing = props.easing;
   }
 
   componentWillUnmount() {
@@ -223,6 +229,7 @@ class ParticleLaunch extends karas.Component {
       fake.ani = ani;
       fake.animation = pathAni;
       fake.currentTime = 0;
+      fake.delay = delay;
     }
     let cb = this.cb = diff => {
       fake.dataList = null;
@@ -280,7 +287,7 @@ class ParticleLaunch extends karas.Component {
               let num = Math.floor(time / blink.duration);
               let diff = time % blink.duration;
               let easing = blink.easing;
-              let percent = (blink.to - blink.from) * diff / blink.duration;
+              let percent = diff / blink.duration;
               if(easing) {
                 let timeFunction = animate.easing.getEasing(easing);
                 if(timeFunction !== animate.easing.linear) {
@@ -289,10 +296,10 @@ class ParticleLaunch extends karas.Component {
               }
               // 偶数from2to，奇数to2from
               if(num % 2 === 0) {
-                opacity *= blink.from + percent;
+                opacity *= blink.from + percent * (blink.to - blink.from);
               }
               else {
-                opacity *= blink.to - percent;
+                opacity *= blink.to - percent * (blink.to - blink.from);
               }
             }
             if(fade) {
@@ -558,12 +565,19 @@ class ParticleLaunch extends karas.Component {
     }
   }
 
+  get duration() {
+    return this.__duration;
+  }
+
+  get easing() {
+    return this.__easing;
+  }
+
   render() {
     return <div cacheAsBitmap={true}>
       <$ ref="fake" style={{
         width: '100%',
         height: '100%',
-        background: '#F00',
       }}/>
     </div>;
   }
