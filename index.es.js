@@ -83,7 +83,7 @@ function _get() {
   return _get.apply(this, arguments);
 }
 
-var version = "0.8.3";
+var version = "0.8.4";
 
 var _karas$enums$STYLE_KE = karas.enums.STYLE_KEY,
     DISPLAY = _karas$enums$STYLE_KE.DISPLAY,
@@ -793,9 +793,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
   }, {
     key: "render",
     value: function render() {
-      return karas.createElement("div", {
-        cacheAsBitmap: true
-      }, karas.createElement($, {
+      return karas.createElement("div", null, karas.createElement($, {
         ref: "fake",
         style: {
           width: '100%',

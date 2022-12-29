@@ -91,7 +91,7 @@
     return _get.apply(this, arguments);
   }
 
-  var version = "0.8.3";
+  var version = "0.8.4";
 
   var _karas$enums$STYLE_KE = karas__default["default"].enums.STYLE_KEY,
       DISPLAY = _karas$enums$STYLE_KE.DISPLAY,
@@ -801,9 +801,7 @@
     }, {
       key: "render",
       value: function render() {
-        return karas__default["default"].createElement("div", {
-          cacheAsBitmap: true
-        }, karas__default["default"].createElement($, {
+        return karas__default["default"].createElement("div", null, karas__default["default"].createElement($, {
           ref: "fake",
           style: {
             width: '100%',

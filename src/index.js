@@ -574,7 +574,7 @@ class ParticleLaunch extends karas.Component {
   }
 
   render() {
-    return <div cacheAsBitmap={true}>
+    return <div>
       <$ ref="fake" style={{
         width: '100%',
         height: '100%',
