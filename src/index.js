@@ -97,13 +97,17 @@ class $ extends karas.Geom {
       ani = null;
     }
     let { __x1: x1, __y1: y1 } = this;
-    let globalAlpha = this.__computedStyle[OPACITY];
+    let globalAlpha;
+    if(renderMode === CANVAS) {
+      globalAlpha = ctx.globalAlpha;
+    }
+    let po = this.__computedStyle[OPACITY];
     let env = this.env;
     let cacheList = [], lastPage, cx = env.width * 0.5, cy = env.height * 0.5;
     // console.warn(dataList)
     dataList.forEach(item => {
       if(item.loaded) {
-        let opacity = globalAlpha * item.opacity;
+        let opacity = po * item.opacity;
         // 计算位置
         let x = item.nowX + x1 + dx;
         let y = item.nowY + y1 + dy;
@@ -194,7 +198,10 @@ class $ extends karas.Geom {
         }
       }
     });
-    if(renderMode === WEBGL) {
+    if(renderMode === CANVAS) {
+      ctx.globalAlpha = globalAlpha;
+    }
+    else if(renderMode === WEBGL) {
       drawTextureCache(ctx, cacheList, cx, cy, dx + x1, dy + y1);
     }
   }

@@ -83,7 +83,7 @@ function _get() {
   return _get.apply(this, arguments);
 }
 
-var version = "0.8.6";
+var version = "0.8.7";
 
 var _karas$enums$STYLE_KE = karas.enums.STYLE_KEY,
     DISPLAY = _karas$enums$STYLE_KE.DISPLAY,
@@ -188,7 +188,13 @@ var $ = /*#__PURE__*/function (_karas$Geom) {
 
       var x1 = this.__x1,
           y1 = this.__y1;
-      var globalAlpha = this.__computedStyle[OPACITY];
+      var globalAlpha;
+
+      if (renderMode === CANVAS) {
+        globalAlpha = ctx.globalAlpha;
+      }
+
+      var po = this.__computedStyle[OPACITY];
       var env = this.env;
       var cacheList = [],
           lastPage,
@@ -197,7 +203,7 @@ var $ = /*#__PURE__*/function (_karas$Geom) {
 
       dataList.forEach(function (item) {
         if (item.loaded) {
-          var opacity = globalAlpha * item.opacity; // 计算位置
+          var opacity = po * item.opacity; // 计算位置
 
           var x = item.nowX + x1 + dx;
           var y = item.nowY + y1 + dy;
@@ -315,7 +321,9 @@ var $ = /*#__PURE__*/function (_karas$Geom) {
         }
       });
 
-      if (renderMode === WEBGL) {
+      if (renderMode === CANVAS) {
+        ctx.globalAlpha = globalAlpha;
+      } else if (renderMode === WEBGL) {
         drawTextureCache(ctx, cacheList, cx, cy, dx + x1, dy + y1);
       }
     }
