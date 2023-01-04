@@ -67,12 +67,18 @@ class $ extends karas.Geom {
       return res;
     }
     let root = this.__root;
-    if(renderMode !== root.renderMode) {
+    if(renderMode !== root.__renderMode) {
       return res;
     }
-    let ani = this.ani, delay = this.delay, animation = this.animation, currentTime = this.currentTime;
+    let ani = this.ani, delay = this.delay, animation = this.animation, currentTime = this.currentTime,
+      duration = this.duration, iterations = this.iterations;
     if(ani && currentTime >= delay) {
       let t = currentTime - delay;
+      let playCount = Math.min(iterations - 1, Math.floor(currentTime / duration));
+      if(playCount >= iterations) {
+        return res;
+      }
+      t -= duration * playCount;
       let i = animate.Animation.binarySearch(0, animation.length - 1, t, animation);
       let notSameFrame = this.lastFrameIndex !== i;
       this.lastFrameIndex = i;
@@ -92,7 +98,8 @@ class $ extends karas.Geom {
     }
     let { __x1: x1, __y1: y1 } = this;
     let globalAlpha = this.__computedStyle[OPACITY];
-    let cacheList = [], lastPage, cx = this.width * 0.5, cy = this.height * 0.5;
+    let env = this.env;
+    let cacheList = [], lastPage, cx = env.width * 0.5, cy = env.height * 0.5;
     // console.warn(dataList)
     dataList.forEach(item => {
       if(item.loaded) {
@@ -128,13 +135,13 @@ class $ extends karas.Geom {
             opacity *= cs[OPACITY];
           }
           if(cs.hasOwnProperty(SCALE_X)) {
-            m = multiplyScaleX(m, cs[SCALE_X]);
+            m = multiplyScaleX(m, cs[SCALE_X].v);
           }
           if(cs.hasOwnProperty(SCALE_Y)) {
-            m = multiplyScaleY(m, cs[SCALE_Y]);
+            m = multiplyScaleY(m, cs[SCALE_Y].v);
           }
           if(cs.hasOwnProperty(ROTATE_Z)) {
-            m = multiplyRotateZ(m, d2r(cs[ROTATE_Z]));
+            m = multiplyRotateZ(m, d2r(cs[ROTATE_Z].v));
           }
         }
         // 保持方向角度于起点一致性，可以指定angle偏移
@@ -163,18 +170,20 @@ class $ extends karas.Geom {
           let cache = item.cache;
           if(!cache) {
             item.cache = true;
-            Img.toWebglCache(ctx, root, item.url, function(res) {
-              item.cache = res;
+            Img.toWebglCache(ctx, root, item.url, x, y, function(res) {
+              cache = item.cache = res;
+              if(cache.count === 1) {
+                let { ctx, width, height, x, y } = cache;
+                ctx.drawImage(item.source, x, y, width, height);
+              }
             });
           }
           if(cache && cache !== true) {
             m = multiplyTfo(m, -tfo[0], -tfo[1]);
-            if(!cache.available && cache.enabled) {
-              let { ctx, width, height, x, y } = cache;
-              ctx.drawImage(item.source, x, y, width, height);
+            if(!cache.__available && cache.__enabled) {
               cache.__available = true;
             }
-            if(cache.available) {
+            if(cache.__available) {
               if(lastPage && lastPage !== cache.__page) {
                 drawTextureCache(ctx, cacheList.splice(0), cx, cy, dx + x1, dy + y1);
               }
@@ -211,7 +220,7 @@ class ParticleLaunch extends karas.Component {
 
   componentDidMount() {
     let { props, shadowRoot: { computedStyle }, root: { renderMode } } = this;
-    let { list = [], initNum = 0, delay = 0, duration = 1000, easing, autoPlay, animation } = props;
+    let { list = [], initNum = 0, delay = 0, duration = 1000, iterations = Infinity, easing, autoPlay, animation } = props;
     let dataList = [];
     let i = 0, length = list.length;
     let lastTime = 0, count = 0;
@@ -220,8 +229,15 @@ class ParticleLaunch extends karas.Component {
     let hasStart;
     // 分析path，类似waa
     if(Array.isArray(animation) && animation.length > 1) {
+      // 偷懒省略animation某个帧时，cloneStyle不报错
       let ani = {
-        __currentStyle: {},
+        __currentStyle: css.normalize({
+          translateX: 0,
+          translateY: 0,
+          scale: 1,
+          rotateZ: 0,
+          opacity: 1,
+        }),
       };
       let pathAni = animate.Animation.parse(animation, duration, easing, ani);
       let keys = animate.Animation.unify(pathAni, ani);
@@ -230,6 +246,8 @@ class ParticleLaunch extends karas.Component {
       fake.animation = pathAni;
       fake.currentTime = 0;
       fake.delay = delay;
+      fake.iterations = iterations;
+      fake.duration = duration;
     }
     let cb = this.cb = diff => {
       fake.dataList = null;
@@ -415,9 +433,17 @@ class ParticleLaunch extends karas.Component {
     else if(!isNil(item.height)) {
       o.height = item.height;
     }
+    let opacity = 1;
+    if(Array.isArray(item.opacity)) {
+      opacity = item.opacity[0] + Math.random() * (item.opacity[1] - item.opacity[0]);
+    }
+    else if(item.opacity !== null && item.opacity !== undefined) {
+      opacity = parseFloat(item.opacity);
+    }
+    o.opacity = opacity;
     let deg = 0;
     if(Array.isArray(item.deg)) {
-      deg = (item.deg[0] + Math.random() * (item.deg[1] - item.deg[0]));
+      deg = item.deg[0] + Math.random() * (item.deg[1] - item.deg[0]);
     }
     else if(item.deg) {
       deg = item.deg;

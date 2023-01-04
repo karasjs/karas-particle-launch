@@ -91,7 +91,7 @@
     return _get.apply(this, arguments);
   }
 
-  var version = "0.8.4";
+  var version = "0.8.5";
 
   var _karas$enums$STYLE_KE = karas__default["default"].enums.STYLE_KEY,
       DISPLAY = _karas$enums$STYLE_KE.DISPLAY,
@@ -156,17 +156,26 @@
 
         var root = this.__root;
 
-        if (renderMode !== root.renderMode) {
+        if (renderMode !== root.__renderMode) {
           return res;
         }
 
         var ani = this.ani,
             delay = this.delay,
             animation = this.animation,
-            currentTime = this.currentTime;
+            currentTime = this.currentTime,
+            duration = this.duration,
+            iterations = this.iterations;
 
         if (ani && currentTime >= delay) {
           var t = currentTime - delay;
+          var playCount = Math.min(iterations - 1, Math.floor(currentTime / duration));
+
+          if (playCount >= iterations) {
+            return res;
+          }
+
+          t -= duration * playCount;
           var i = animate.Animation.binarySearch(0, animation.length - 1, t, animation);
           var notSameFrame = this.lastFrameIndex !== i;
           this.lastFrameIndex = i;
@@ -188,10 +197,11 @@
         var x1 = this.__x1,
             y1 = this.__y1;
         var globalAlpha = this.__computedStyle[OPACITY];
+        var env = this.env;
         var cacheList = [],
             lastPage,
-            cx = this.width * 0.5,
-            cy = this.height * 0.5; // console.warn(dataList)
+            cx = env.width * 0.5,
+            cy = env.height * 0.5; // console.warn(dataList)
 
         dataList.forEach(function (item) {
           if (item.loaded) {
@@ -231,15 +241,15 @@
               }
 
               if (cs.hasOwnProperty(SCALE_X)) {
-                m = multiplyScaleX(m, cs[SCALE_X]);
+                m = multiplyScaleX(m, cs[SCALE_X].v);
               }
 
               if (cs.hasOwnProperty(SCALE_Y)) {
-                m = multiplyScaleY(m, cs[SCALE_Y]);
+                m = multiplyScaleY(m, cs[SCALE_Y].v);
               }
 
               if (cs.hasOwnProperty(ROTATE_Z)) {
-                m = multiplyRotateZ(m, d2r(cs[ROTATE_Z]));
+                m = multiplyRotateZ(m, d2r(cs[ROTATE_Z].v));
               }
             } // 保持方向角度于起点一致性，可以指定angle偏移
 
@@ -273,27 +283,30 @@
 
               if (!cache) {
                 item.cache = true;
-                Img.toWebglCache(ctx, root, item.url, function (res) {
-                  item.cache = res;
+                Img.toWebglCache(ctx, root, item.url, x, y, function (res) {
+                  cache = item.cache = res;
+
+                  if (cache.count === 1) {
+                    var _cache = cache,
+                        _ctx = _cache.ctx,
+                        width = _cache.width,
+                        height = _cache.height,
+                        _x = _cache.x,
+                        _y = _cache.y;
+
+                    _ctx.drawImage(item.source, _x, _y, width, height);
+                  }
                 });
               }
 
               if (cache && cache !== true) {
                 m = multiplyTfo(m, -tfo[0], -tfo[1]);
 
-                if (!cache.available && cache.enabled) {
-                  var _ctx = cache.ctx,
-                      width = cache.width,
-                      height = cache.height,
-                      _x = cache.x,
-                      _y = cache.y;
-
-                  _ctx.drawImage(item.source, _x, _y, width, height);
-
+                if (!cache.__available && cache.__enabled) {
                   cache.__available = true;
                 }
 
-                if (cache.available) {
+                if (cache.__available) {
                   if (lastPage && lastPage !== cache.__page) {
                     drawTextureCache(ctx, cacheList.splice(0), cx, cy, dx + x1, dy + y1);
                   }
@@ -358,6 +371,8 @@
             delay = _props$delay === void 0 ? 0 : _props$delay,
             _props$duration = props.duration,
             duration = _props$duration === void 0 ? 1000 : _props$duration,
+            _props$iterations = props.iterations,
+            iterations = _props$iterations === void 0 ? Infinity : _props$iterations,
             easing = props.easing,
             autoPlay = props.autoPlay,
             animation = props.animation;
@@ -372,8 +387,15 @@
         var hasStart; // 分析path，类似waa
 
         if (Array.isArray(animation) && animation.length > 1) {
+          // 偷懒省略animation某个帧时，cloneStyle不报错
           var ani = {
-            __currentStyle: {}
+            __currentStyle: css.normalize({
+              translateX: 0,
+              translateY: 0,
+              scale: 1,
+              rotateZ: 0,
+              opacity: 1
+            })
           };
           var pathAni = animate.Animation.parse(animation, duration, easing, ani);
           var keys = animate.Animation.unify(pathAni, ani);
@@ -382,6 +404,8 @@
           fake.animation = pathAni;
           fake.currentTime = 0;
           fake.delay = delay;
+          fake.iterations = iterations;
+          fake.duration = duration;
         }
 
         var cb = this.cb = function (diff) {
@@ -623,6 +647,15 @@
           o.height = item.height;
         }
 
+        var opacity = 1;
+
+        if (Array.isArray(item.opacity)) {
+          opacity = item.opacity[0] + Math.random() * (item.opacity[1] - item.opacity[0]);
+        } else if (item.opacity !== null && item.opacity !== undefined) {
+          opacity = parseFloat(item.opacity);
+        }
+
+        o.opacity = opacity;
         var deg = 0;
 
         if (Array.isArray(item.deg)) {
