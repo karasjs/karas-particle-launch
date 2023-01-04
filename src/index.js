@@ -282,7 +282,7 @@ class ParticleLaunch extends karas.Component {
             // webgl需释放纹理
             if(renderMode === WEBGL && remove.length) {
               remove.forEach(item => {
-                item.cache.release();
+                item.cache && item.cache.release();
               });
             }
           }

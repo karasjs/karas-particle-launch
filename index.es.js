@@ -83,7 +83,7 @@ function _get() {
   return _get.apply(this, arguments);
 }
 
-var version = "0.8.5";
+var version = "0.8.6";
 
 var _karas$enums$STYLE_KE = karas.enums.STYLE_KEY,
     DISPLAY = _karas$enums$STYLE_KE.DISPLAY,
@@ -440,7 +440,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
 
               if (renderMode === WEBGL && remove.length) {
                 remove.forEach(function (item) {
-                  item.cache.release();
+                  item.cache && item.cache.release();
                 });
               }
             } else if (item.source) {
