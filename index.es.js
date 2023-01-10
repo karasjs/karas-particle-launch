@@ -83,7 +83,7 @@ function _get() {
   return _get.apply(this, arguments);
 }
 
-var version = "0.8.7";
+var version = "0.8.8";
 
 var _karas$enums$STYLE_KE = karas.enums.STYLE_KEY,
     DISPLAY = _karas$enums$STYLE_KE.DISPLAY,
@@ -95,7 +95,7 @@ var _karas$enums$STYLE_KE = karas.enums.STYLE_KEY,
     SCALE_Y = _karas$enums$STYLE_KE.SCALE_Y,
     ROTATE_Z = _karas$enums$STYLE_KE.ROTATE_Z,
     _karas$refresh = karas.refresh,
-    REPAINT = _karas$refresh.level.REPAINT,
+    CACHE = _karas$refresh.level.CACHE,
     drawTextureCache = _karas$refresh.webgl.drawTextureCache,
     isNil = karas.util.isNil,
     _karas$math = karas.math,
@@ -448,7 +448,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
 
               if (renderMode === WEBGL && remove.length) {
                 remove.forEach(function (item) {
-                  item.cache && item.cache.release();
+                  item.cache && item.cache.release && item.cache.release();
                 });
               }
             } else if (item.source) {
@@ -560,7 +560,7 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
               var _this2$props$onFrame, _this2$props;
 
               fake.dataList = dataList;
-              fake.refresh(REPAINT);
+              fake.refresh(CACHE);
               (_this2$props$onFrame = (_this2$props = _this2.props).onFrame) === null || _this2$props$onFrame === void 0 ? void 0 : _this2$props$onFrame.call(_this2$props);
 
               _this2.emit('frame');

@@ -16,7 +16,7 @@ const {
   },
   refresh: {
     level: {
-      REPAINT,
+      CACHE,
     },
     webgl: {
       drawTextureCache,
@@ -289,7 +289,7 @@ class ParticleLaunch extends karas.Component {
             // webgl需释放纹理
             if(renderMode === WEBGL && remove.length) {
               remove.forEach(item => {
-                item.cache && item.cache.release();
+                item.cache && item.cache.release && item.cache.release();
               });
             }
           }
@@ -368,7 +368,7 @@ class ParticleLaunch extends karas.Component {
         if(hasStart && currentTime >= delay) {
           if(computedStyle[DISPLAY] !== 'none' && computedStyle[VISIBILITY] !== 'hidden' && computedStyle[OPACITY] > 0) {
             fake.dataList = dataList;
-            fake.refresh(REPAINT);
+            fake.refresh(CACHE);
             this.props.onFrame?.();
             this.emit('frame');
           }
