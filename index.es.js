@@ -83,7 +83,7 @@ function _get() {
   return _get.apply(this, arguments);
 }
 
-var version = "0.8.8";
+var version = "0.9.0";
 
 var _karas$enums$STYLE_KE = karas.enums.STYLE_KEY,
     DISPLAY = _karas$enums$STYLE_KE.DISPLAY,
@@ -125,17 +125,6 @@ var $ = /*#__PURE__*/function (_karas$Geom) {
   }
 
   _createClass($, [{
-    key: "calContent",
-    value: function calContent(currentStyle, computedStyle) {
-      var res = _get(_getPrototypeOf($.prototype), "calContent", this).call(this, currentStyle, computedStyle);
-
-      if (res) {
-        return res;
-      }
-
-      return this.dataList && this.dataList.length;
-    }
-  }, {
     key: "render",
     value: function render(renderMode, ctx, dx, dy) {
       var res = _get(_getPrototypeOf($.prototype), "render", this).call(this, renderMode, ctx, dx, dy);
@@ -199,21 +188,20 @@ var $ = /*#__PURE__*/function (_karas$Geom) {
       var cacheList = [],
           lastPage,
           cx = env.width * 0.5,
-          cy = env.height * 0.5; // console.warn(dataList)
-
+          cy = env.height * 0.5;
       dataList.forEach(function (item) {
         if (item.loaded) {
           var opacity = po * item.opacity; // 计算位置
 
-          var x = item.nowX + x1 + dx;
-          var y = item.nowY + y1 + dy;
+          var x = item.nowX + x1 + dx - item.x;
+          var y = item.nowY + y1 + dy - item.y;
           var m = identity();
           var img = inject.IMG[item.url];
-          var tfo = [x + img.width * 0.5, y + img.height * 0.5];
-          m = tfoMultiply(tfo[0], tfo[1], m); // 移动一半使得图形中心为计算位置的原点
+          var tfo = [item.x + img.width * 0.5, item.y + img.height * 0.5];
+          m = tfoMultiply(tfo[0], tfo[1], m); // 移动一半使得图形中心为计算位置的原点，还有平移位置
 
-          m = multiplyTranslateX(m, -img.width * 0.5);
-          m = multiplyTranslateY(m, -img.height * 0.5); // 如果有path，需要设置且保存当时的位置
+          m = multiplyTranslateX(m, x - img.width * 0.5);
+          m = multiplyTranslateY(m, y - img.height * 0.5); // 如果有path，需要设置且保存当时的位置
 
           if (ani) {
             var cs;
@@ -275,13 +263,13 @@ var $ = /*#__PURE__*/function (_karas$Geom) {
             ctx.globalAlpha = opacity; // canvas处理方式不一样，render的dx和dy包含了total的偏移计算考虑，可以无感知
 
             ctx.setTransform(m[0], m[1], m[4], m[5], m[12], m[13]);
-            ctx.drawImage(item.source, x, y);
+            ctx.drawImage(item.source, item.x, item.y);
           } else if (renderMode === WEBGL) {
             var cache = item.cache;
 
             if (!cache) {
               item.cache = true;
-              Img.toWebglCache(ctx, root, item.url, x, y, function (res) {
+              Img.toWebglCache(ctx, root, item.url, item.x, item.y, function (res) {
                 cache = item.cache = res;
 
                 if (cache.count === 1) {
@@ -838,7 +826,9 @@ var ParticleLaunch = /*#__PURE__*/function (_karas$Component) {
         ref: "fake",
         style: {
           width: '100%',
-          height: '100%'
+          height: '100%',
+          fill: 'none',
+          stroke: 0
         }
       }));
     }
