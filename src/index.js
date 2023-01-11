@@ -31,6 +31,8 @@ const {
     },
     matrix: {
       identity,
+      isE,
+      multiply,
       multiplyTfo,
       tfoMultiply,
       multiplyTranslateX,
@@ -157,6 +159,10 @@ class $ extends karas.Geom {
         }
         if(renderMode === CANVAS) {
           m = multiplyTfo(m, -tfo[0], -tfo[1]);
+          let me = this.domParent.matrixEvent;
+          if(!isE(me)) {
+            m = multiply(me, m);
+          }
           ctx.globalAlpha = opacity;
           // canvas处理方式不一样，render的dx和dy包含了total的偏移计算考虑，可以无感知
           ctx.setTransform(m[0], m[1], m[4], m[5], m[12], m[13]);
@@ -176,12 +182,16 @@ class $ extends karas.Geom {
           }
           if(cache && cache !== true) {
             m = multiplyTfo(m, -tfo[0], -tfo[1]);
+            let me = this.domParent.matrixEvent;
+            if(!isE(me)) {
+              m = multiply(me, m);
+            }
             if(!cache.__available && cache.__enabled) {
               cache.__available = true;
             }
             if(cache.__available) {
               if(lastPage && lastPage !== cache.__page) {
-                drawTextureCache(ctx, cacheList.splice(0), cx, cy, dx + x1, dy + y1);
+                drawTextureCache(ctx, cacheList.splice(0), cx, cy, dx, dy);
               }
               lastPage = cache.__page;
               cacheList.push({ cache, opacity, matrix: m });
@@ -194,7 +204,7 @@ class $ extends karas.Geom {
       ctx.globalAlpha = globalAlpha;
     }
     else if(renderMode === WEBGL) {
-      drawTextureCache(ctx, cacheList, cx, cy, dx + x1, dy + y1);
+      drawTextureCache(ctx, cacheList, cx, cy, dx, dy);
     }
   }
 }
