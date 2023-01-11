@@ -91,7 +91,7 @@
     return _get.apply(this, arguments);
   }
 
-  var version = "0.9.1";
+  var version = "0.9.2";
 
   var _karas$enums$STYLE_KE = karas__default["default"].enums.STYLE_KEY,
       DISPLAY = _karas$enums$STYLE_KE.DISPLAY,
@@ -365,7 +365,11 @@
 
     _createClass(ParticleLaunch, [{
       key: "componentWillUnmount",
-      value: function componentWillUnmount() {}
+      value: function componentWillUnmount() {
+        (this.dataList || []).forEach(function (item) {
+          item.cache && item.cache.release && item.cache.release();
+        });
+      }
     }, {
       key: "componentDidMount",
       value: function componentDidMount() {
@@ -387,7 +391,7 @@
             easing = props.easing,
             autoPlay = props.autoPlay,
             animation = props.animation;
-        var dataList = [];
+        var dataList = this.dataList = [];
         var i = 0,
             length = list.length;
         var lastTime = 0,

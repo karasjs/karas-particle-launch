@@ -225,12 +225,15 @@ class ParticleLaunch extends karas.Component {
   }
 
   componentWillUnmount() {
+    (this.dataList || []).forEach(item => {
+      item.cache && item.cache.release && item.cache.release();
+    });
   }
 
   componentDidMount() {
     let { props, shadowRoot: { computedStyle }, root: { renderMode } } = this;
     let { list = [], initNum = 0, delay = 0, duration = 1000, iterations = Infinity, easing, autoPlay, animation } = props;
-    let dataList = [];
+    let dataList = this.dataList = [];
     let i = 0, length = list.length;
     let lastTime = 0, count = 0;
     let fake = this.ref.fake;
