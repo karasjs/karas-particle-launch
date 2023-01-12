@@ -91,7 +91,7 @@
     return _get.apply(this, arguments);
   }
 
-  var version = "0.9.2";
+  var version = "0.9.3";
 
   var _karas$enums$STYLE_KE = karas__default["default"].enums.STYLE_KEY,
       DISPLAY = _karas$enums$STYLE_KE.DISPLAY,
@@ -137,8 +137,6 @@
     _createClass($, [{
       key: "render",
       value: function render(renderMode, ctx, dx, dy) {
-        var _this = this;
-
         var res = _get(_getPrototypeOf($.prototype), "render", this).call(this, renderMode, ctx, dx, dy);
 
         var dataList = this.dataList;
@@ -188,22 +186,29 @@
         }
 
         var x1 = this.__x1,
-            y1 = this.__y1;
+            y1 = this.__y1,
+            __computedStyle = this.__computedStyle;
+        var op = __computedStyle[OPACITY];
+
+        if (__computedStyle[DISPLAY] === 'none' || __computedStyle[VISIBILITY] === 'hidden' || op <= 0) {
+          return res;
+        }
+
         var globalAlpha;
 
         if (renderMode === CANVAS) {
           globalAlpha = ctx.globalAlpha;
         }
 
-        var po = this.__computedStyle[OPACITY];
         var env = this.env;
         var cacheList = [],
             lastPage,
             cx = env.width * 0.5,
             cy = env.height * 0.5;
+        var me = this.domParent.matrixEvent;
         dataList.forEach(function (item) {
           if (item.loaded) {
-            var opacity = po * item.opacity; // 计算位置
+            var opacity = op * item.opacity; // 计算位置
 
             var x = item.nowX + x1 + dx - item.x;
             var y = item.nowY + y1 + dy - item.y;
@@ -272,7 +277,6 @@
 
             if (renderMode === CANVAS) {
               m = multiplyTfo(m, -tfo[0], -tfo[1]);
-              var me = _this.domParent.matrixEvent;
 
               if (!isE(me)) {
                 m = multiply(me, m);
@@ -299,16 +303,17 @@
                         _y = _cache.y;
 
                     _ctx.drawImage(item.source, _x, _y, width, height);
+
+                    cache.update();
                   }
                 });
               }
 
               if (cache && cache !== true) {
                 m = multiplyTfo(m, -tfo[0], -tfo[1]);
-                var _me = _this.domParent.matrixEvent;
 
-                if (!isE(_me)) {
-                  m = multiply(_me, m);
+                if (!isE(me)) {
+                  m = multiply(me, m);
                 }
 
                 if (!cache.__available && cache.__enabled) {
@@ -349,18 +354,18 @@
     _inherits(ParticleLaunch, _karas$Component);
 
     function ParticleLaunch(props) {
-      var _this2;
+      var _this;
 
-      _this2 = _karas$Component.call(this, props) || this;
-      _this2.count = 0;
-      _this2.time = 0;
-      _this2.playbackRate = props.playbackRate || 1;
-      _this2.interval = props.interval || 300;
-      _this2.intervalNum = props.intervalNum || 1;
-      _this2.num = props.num || 0;
-      _this2.__duration = props.duration || 1000;
-      _this2.__easing = props.easing;
-      return _this2;
+      _this = _karas$Component.call(this, props) || this;
+      _this.count = 0;
+      _this.time = 0;
+      _this.playbackRate = props.playbackRate || 1;
+      _this.interval = props.interval || 300;
+      _this.intervalNum = props.intervalNum || 1;
+      _this.num = props.num || 0;
+      _this.__duration = props.duration || 1000;
+      _this.__easing = props.easing;
+      return _this;
     }
 
     _createClass(ParticleLaunch, [{
@@ -373,10 +378,9 @@
     }, {
       key: "componentDidMount",
       value: function componentDidMount() {
-        var _this3 = this;
+        var _this2 = this;
 
         var props = this.props,
-            computedStyle = this.shadowRoot.computedStyle,
             renderMode = this.root.renderMode;
         var _props$list = props.list,
             list = _props$list === void 0 ? [] : _props$list,
@@ -425,7 +429,7 @@
 
         var cb = this.cb = function (diff) {
           fake.dataList = null;
-          diff *= _this3.playbackRate;
+          diff *= _this2.playbackRate;
           currentTime += diff;
           fake.currentTime = currentTime;
 
@@ -435,18 +439,18 @@
 
           if (delay <= 0) {
             diff += delay;
-            _this3.time += diff;
+            _this2.time += diff;
             delay = 0; // 如果有初始粒子
 
             if (initNum > 0) {
-              lastTime = _this3.time;
+              lastTime = _this2.time;
 
               while (initNum-- > 0) {
                 i++;
                 i %= length;
                 count++;
 
-                var o = _this3.genItem(list[i], duration);
+                var o = _this2.genItem(list[i], duration);
 
                 maxTime = Math.max(maxTime, currentTime + o.duration);
                 dataList.push(o);
@@ -571,44 +575,42 @@
 
 
             if (hasStart && currentTime >= delay) {
-              if (computedStyle[DISPLAY] !== 'none' && computedStyle[VISIBILITY] !== 'hidden' && computedStyle[OPACITY] > 0) {
-                var _this3$props$onFrame, _this3$props;
+              var _this2$props$onFrame, _this2$props;
 
-                fake.dataList = dataList;
-                fake.refresh(CACHE);
-                (_this3$props$onFrame = (_this3$props = _this3.props).onFrame) === null || _this3$props$onFrame === void 0 ? void 0 : _this3$props$onFrame.call(_this3$props);
+              fake.dataList = dataList;
+              fake.refresh(CACHE);
+              (_this2$props$onFrame = (_this2$props = _this2.props).onFrame) === null || _this2$props$onFrame === void 0 ? void 0 : _this2$props$onFrame.call(_this2$props);
 
-                _this3.emit('frame');
-              }
+              _this2.emit('frame');
             } // 数量完了动画也执行完了停止
 
 
-            if (count >= _this3.num && currentTime >= maxTime) {
-              var _this3$props$onFinish, _this3$props2;
+            if (count >= _this2.num && currentTime >= maxTime) {
+              var _this2$props$onFinish, _this2$props2;
 
               fake.removeFrameAnimate(cb);
-              (_this3$props$onFinish = (_this3$props2 = _this3.props).onFinish) === null || _this3$props$onFinish === void 0 ? void 0 : _this3$props$onFinish.call(_this3$props2);
+              (_this2$props$onFinish = (_this2$props2 = _this2.props).onFinish) === null || _this2$props$onFinish === void 0 ? void 0 : _this2$props$onFinish.call(_this2$props2);
 
-              _this3.emit('finish');
+              _this2.emit('finish');
 
               return;
             } // 每隔interval开始生成这一阶段的粒子数据
 
 
-            if (_this3.time >= lastTime + _this3.interval && count < _this3.num) {
-              lastTime = _this3.time;
+            if (_this2.time >= lastTime + _this2.interval && count < _this2.num) {
+              lastTime = _this2.time;
 
-              for (var _j = 0; _j < _this3.intervalNum; _j++) {
+              for (var _j = 0; _j < _this2.intervalNum; _j++) {
                 i++;
                 i %= length;
                 count++;
 
-                var _o = _this3.genItem(list[i], duration);
+                var _o = _this2.genItem(list[i], duration);
 
                 maxTime = Math.max(maxTime, currentTime + _o.duration);
                 dataList.push(_o);
 
-                if (count >= _this3.num) {
+                if (count >= _this2.num) {
                   break;
                 }
               }

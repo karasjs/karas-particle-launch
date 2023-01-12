@@ -91,17 +91,23 @@ class $ extends karas.Geom {
     else {
       ani = null;
     }
-    let { __x1: x1, __y1: y1 } = this;
+    let { __x1: x1, __y1: y1, __computedStyle } = this;
+    let op = __computedStyle[OPACITY];
+    if(__computedStyle[DISPLAY] === 'none'
+      || __computedStyle[VISIBILITY] === 'hidden'
+      || op <= 0) {
+      return res;
+    }
     let globalAlpha;
     if(renderMode === CANVAS) {
       globalAlpha = ctx.globalAlpha;
     }
-    let po = this.__computedStyle[OPACITY];
     let env = this.env;
     let cacheList = [], lastPage, cx = env.width * 0.5, cy = env.height * 0.5;
+    let me = this.domParent.matrixEvent;
     dataList.forEach(item => {
       if(item.loaded) {
-        let opacity = po * item.opacity;
+        let opacity = op * item.opacity;
         // 计算位置
         let x = item.nowX + x1 + dx - item.x;
         let y = item.nowY + y1 + dy - item.y;
@@ -159,7 +165,6 @@ class $ extends karas.Geom {
         }
         if(renderMode === CANVAS) {
           m = multiplyTfo(m, -tfo[0], -tfo[1]);
-          let me = this.domParent.matrixEvent;
           if(!isE(me)) {
             m = multiply(me, m);
           }
@@ -177,12 +182,12 @@ class $ extends karas.Geom {
               if(cache.count === 1) {
                 let { ctx, width, height, x, y } = cache;
                 ctx.drawImage(item.source, x, y, width, height);
+                cache.update();
               }
             });
           }
           if(cache && cache !== true) {
             m = multiplyTfo(m, -tfo[0], -tfo[1]);
-            let me = this.domParent.matrixEvent;
             if(!isE(me)) {
               m = multiply(me, m);
             }
@@ -231,7 +236,7 @@ class ParticleLaunch extends karas.Component {
   }
 
   componentDidMount() {
-    let { props, shadowRoot: { computedStyle }, root: { renderMode } } = this;
+    let { props, root: { renderMode } } = this;
     let { list = [], initNum = 0, delay = 0, duration = 1000, iterations = Infinity, easing, autoPlay, animation } = props;
     let dataList = this.dataList = [];
     let i = 0, length = list.length;
@@ -371,12 +376,10 @@ class ParticleLaunch extends karas.Component {
         }
         // 开始后每次都刷新，即便数据已空，要变成空白初始状态
         if(hasStart && currentTime >= delay) {
-          if(computedStyle[DISPLAY] !== 'none' && computedStyle[VISIBILITY] !== 'hidden' && computedStyle[OPACITY] > 0) {
-            fake.dataList = dataList;
-            fake.refresh(CACHE);
-            this.props.onFrame?.();
-            this.emit('frame');
-          }
+          fake.dataList = dataList;
+          fake.refresh(CACHE);
+          this.props.onFrame?.();
+          this.emit('frame');
         }
         // 数量完了动画也执行完了停止
         if(count >= this.num && currentTime >= maxTime) {
